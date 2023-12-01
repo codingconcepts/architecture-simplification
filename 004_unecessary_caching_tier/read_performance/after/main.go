@@ -1,0 +1,115 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/rand"
+	"os"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	products = mustLoadIDs("004_unecessary_caching_tier/read_performance/ids.json")
+)
+
+func main() {
+	cfg, err := pgxpool.ParseConfig("postgres://root@localhost:26257/defaultdb?sslmode=disable")
+	if err != nil {
+		log.Fatalf("error parsing db config: %v", err)
+	}
+	cfg.MaxConns = 50
+
+	db, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		log.Fatalf("error connecting to database: %v", err)
+	}
+	defer db.Close()
+
+	if err = db.Ping(context.Background()); err != nil {
+		log.Fatalf("error pinging db: %v", err)
+	}
+
+	router := fiber.New()
+	router.Get("/products/:id/stock", handleGetProduct(db))
+	go func() {
+		log.Fatal(router.Listen(":3000"))
+	}()
+
+	simulateWrites(db, time.Millisecond*100)
+}
+
+func mustLoadIDs(path string) []string {
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("error opening ids file for reading: %v", err)
+	}
+
+	var ids []string
+	if err = json.NewDecoder(f).Decode(&ids); err != nil {
+		log.Fatalf("error parsing ids: %v", err)
+	}
+
+	return ids
+}
+
+func handleGetProduct(db *pgxpool.Pool) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		productID := c.Params("id")
+		if productID == "" {
+			return fiber.NewError(fiber.StatusUnprocessableEntity, "missing product id")
+		}
+
+		dbQuantity, err := readFromDB(db, productID)
+		if err != nil {
+			return fmt.Errorf("reading from db: %w", err)
+		}
+
+		return c.JSON(fiber.Map{
+			"stock": dbQuantity,
+		})
+	}
+}
+
+func simulateWrites(db *pgxpool.Pool, rate time.Duration) error {
+	for range time.NewTicker(rate).C {
+		if err := simulateWrite(db); err != nil {
+			log.Printf("error simulating write: %v", err)
+		}
+	}
+
+	return fmt.Errorf("finished simulateWrites unexectedly")
+}
+
+func simulateWrite(db *pgxpool.Pool) error {
+	// Pick a product.
+	productID := products[rand.Intn(len(products))]
+	stock := rand.Intn(1000)
+
+	// Update stock in database.
+	const stmt = `UPDATE stock SET quantity = $1 WHERE product_id = $2`
+	if _, err := db.Exec(context.Background(), stmt, stock, productID); err != nil {
+		return fmt.Errorf("updating database stock: %w", err)
+	}
+
+	return nil
+}
+
+func readFromDB(db *pgxpool.Pool, productID string) (int, error) {
+	const stmt = `SELECT quantity FROM stock
+								WHERE product_id = $1
+								AS OF SYSTEM TIME follower_read_timestamp()`
+
+	row := db.QueryRow(context.Background(), stmt, productID)
+
+	var quantity int
+	if err := row.Scan(&quantity); err != nil {
+		return 0, fmt.Errorf("getting stock from database: %w", err)
+	}
+
+	return quantity, nil
+}
