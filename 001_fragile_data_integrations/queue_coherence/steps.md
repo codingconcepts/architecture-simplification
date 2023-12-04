@@ -1,4 +1,10 @@
-## Before
+**Note from Kai**
+
+> How about collapsing "Queue Incoherence" and "Multi producers"? Its essentially the same problem, that there's multiple transactional resources involved in a non-atomic transaction (no xa/2pc). It could involve a database, a cache, a queue or an aux service, each one using independent local txns / sessions.
+
+> The after diagram could highlight cdc to a message passing system (aka outbox) which in turn feeds the downstream systems with at-least-once delivery guarantee (or effectively-once by dedup)
+
+# Before
 
 ### Create
 
@@ -32,7 +38,7 @@ INSERT INTO stock (product_id, quantity) VALUES
 (cd 001_fragile_data_integrations/queue_coherence/before && go run main.go -r 100ms -w 250ms)
 ```
 
-## After simplifcation
+# After
 
 ### Create
 
