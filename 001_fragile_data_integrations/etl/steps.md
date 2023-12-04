@@ -1,5 +1,20 @@
 # Before
 
+``` mermaid
+sequenceDiagram
+    participant app
+    participant db
+    participant kafka
+    participant etl
+    
+    app->>db: Write value
+    db-->>kafka: Publish (raw)
+    kafka-->>etl: Consume (raw)
+    etl->>etl: Transform
+    etl->>kafka: Publish (transformed)
+    kafka->>app: Consume (transformed)
+```
+
 ### Create
 
 Kafka
@@ -51,6 +66,17 @@ WITH
 ```
 
 # After
+
+``` mermaid
+sequenceDiagram
+    participant app
+    participant db
+    participant kafka
+    
+    app->>db: Write value
+    db-->>kafka: Publish (transformed)
+    kafka->>app: Consume (transformed)
+```
 
 ### Create
 
