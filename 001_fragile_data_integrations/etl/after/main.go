@@ -39,12 +39,12 @@ func main() {
 
 func simulateProducer(db *pgxpool.Pool) error {
 	const stmt = `INSERT INTO order_line_item (order_id, product_id, customer_id, quantity, price, ts) VALUES
-								(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), $1, $2, now())`
+								(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), $1, $2, $3)`
 
 	for {
 		time.Sleep(time.Millisecond * time.Duration(rand.Intn(3000)))
 
-		if _, err := db.Exec(context.Background(), stmt, rand.Intn(10), rand.Float64()*100); err != nil {
+		if _, err := db.Exec(context.Background(), stmt, rand.Intn(10), rand.Float64()*100, time.Now()); err != nil {
 			return fmt.Errorf("inserting event: %w", err)
 		}
 	}
