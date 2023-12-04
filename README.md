@@ -4,6 +4,7 @@ Code samples to accompany the architecture simplification initiative
 ### Scenarios
 Click on the following links to open each of the scenarios:
 
+* [etl](001_fragile_data_integrations/etl/steps.md)
 * [polling_clients](001_fragile_data_integrations/polling_clients/steps.md)
 * [purging_data](001_fragile_data_integrations/purging_data/steps.md)
 * [queue_coherence](001_fragile_data_integrations/queue_coherence/steps.md)
