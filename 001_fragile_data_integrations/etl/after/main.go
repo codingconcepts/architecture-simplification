@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -16,9 +15,6 @@ import (
 
 func main() {
 	log.SetFlags(0)
-
-	writeInterval := flag.Duration("w", time.Millisecond*10, "interval between writes")
-	flag.Parse()
 
 	db, err := pgxpool.New(context.Background(), "postgres://root@localhost:26257/defaultdb?sslmode=disable")
 	if err != nil {
@@ -37,21 +33,21 @@ func main() {
 		StartOffset: kafka.LastOffset,
 	})
 
-	go simulateProducer(db, *writeInterval)
+	go simulateProducer(db)
 	simulateConsumer(transformedReader)
 }
 
-func simulateProducer(db *pgxpool.Pool, rate time.Duration) error {
+func simulateProducer(db *pgxpool.Pool) error {
 	const stmt = `INSERT INTO order_line_item (order_id, product_id, customer_id, quantity, price, ts) VALUES
 								(gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), $1, $2, now())`
 
-	for range time.NewTicker(rate).C {
+	for {
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(3000)))
+
 		if _, err := db.Exec(context.Background(), stmt, rand.Intn(10), rand.Float64()*100); err != nil {
 			return fmt.Errorf("inserting event: %w", err)
 		}
 	}
-
-	return fmt.Errorf("finished simulateProducer unexectedly")
 }
 
 type after struct {
@@ -77,6 +73,6 @@ func simulateConsumer(reader *kafka.Reader) error {
 		}
 
 		ts := time.Unix(a.Timestamp, 0)
-		log.Printf("[transformed %s] %s", time.Since(ts), string(m.Value))
+		log.Printf("\n[transformed %s] %s", time.Since(ts), string(m.Value))
 	}
 }

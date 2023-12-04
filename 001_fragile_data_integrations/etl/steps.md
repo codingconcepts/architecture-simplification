@@ -2,6 +2,19 @@
 
 ### Create
 
+Kafka
+
+``` sh
+docker run -d \
+  --name redpanda \
+  -p 9092:9092 -p 29092:29092 \
+  docker.redpanda.com/redpandadata/redpanda:v22.2.2 \
+    start \
+      --smp 1 \
+      --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092 \
+      --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+```
+
 Database
 
 ``` sh
@@ -21,19 +34,6 @@ CREATE TABLE order_line_item (
 );
 ```
 
-Kafka
-
-``` sh
-docker run -d \
-  --name redpanda \
-  -p 9092:9092 -p 29092:29092 \
-  docker.redpanda.com/redpandadata/redpanda:v22.2.2 \
-    start \
-      --smp 1 \
-      --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092 \
-      --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
-```
-
 CDC
 
 ``` sql
@@ -47,7 +47,7 @@ WITH
 ### Run
 
 ``` sh
-(cd 001_fragile_data_integrations/etl/before && go run main.go -w 3s)
+(cd 001_fragile_data_integrations/etl/before && go run main.go)
 ```
 
 # After
@@ -71,7 +71,7 @@ AS
 ### Run
 
 ``` sh
-(cd 001_fragile_data_integrations/etl/after && go run main.go -w 3s)
+(cd 001_fragile_data_integrations/etl/after && go run main.go)
 ```
 
 ### Summary
