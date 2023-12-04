@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -53,6 +54,13 @@ func simulateProducer(db *pgxpool.Pool, rate time.Duration) error {
 	return fmt.Errorf("finished simulateProducer unexectedly")
 }
 
+type after struct {
+	OrderID   string `json:"-"`
+	Quantity  int    `json:"quantity"`
+	Price     int64  `json:"price"` // Integer
+	Timestamp int64  `json:"ts"`    // Epoch
+}
+
 func simulateConsumer(reader *kafka.Reader) error {
 	for {
 		m, err := reader.ReadMessage(context.Background())
@@ -61,6 +69,14 @@ func simulateConsumer(reader *kafka.Reader) error {
 			continue
 		}
 
-		log.Printf("[transformed] %s", string(m.Value))
+		// Parse message to determine total flight time.
+		var a after
+		if err = json.Unmarshal(m.Value, &a); err != nil {
+			log.Printf("error parsing message: %v", err)
+			continue
+		}
+
+		ts := time.Unix(a.Timestamp, 0)
+		log.Printf("[transformed %s] %s", time.Since(ts), string(m.Value))
 	}
 }

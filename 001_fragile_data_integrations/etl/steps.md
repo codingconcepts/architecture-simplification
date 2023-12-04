@@ -63,7 +63,7 @@ WITH
 AS
   SELECT
     quantity,
-    round(price * 100, 2) as price,
+    (price * 100)::INT AS price,
     ts::INT
   FROM order_line_item;
 ```

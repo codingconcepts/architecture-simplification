@@ -77,7 +77,15 @@ func simulateConsumer(reader *kafka.Reader) error {
 			continue
 		}
 
-		log.Printf("[transformed] %s", string(m.Value))
+		// Parse message to determine total flight time.
+		var a after
+		if err = json.Unmarshal(m.Value, &a); err != nil {
+			log.Printf("error parsing message: %v", err)
+			continue
+		}
+
+		ts := time.Unix(a.Timestamp, 0)
+		log.Printf("[transformed %s] %s", time.Since(ts), string(m.Value))
 	}
 }
 
