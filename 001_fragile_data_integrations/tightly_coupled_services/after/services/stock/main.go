@@ -16,7 +16,7 @@ import (
 func main() {
 	time.Sleep(time.Second * 20)
 
-	db, err := pgxpool.New(context.Background(), "postgres://stock@cockroachdb:26257/stock?sslmode=disable")
+	db, err := pgxpool.New(context.Background(), "postgres://stock@stock_db:26257/stock?sslmode=disable")
 	if err != nil {
 		log.Fatalf("error connecting to database: %v", err)
 	}

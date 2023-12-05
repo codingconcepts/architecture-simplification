@@ -1,20 +1,36 @@
 services:
 
-  cockroachdb:
+  product_db:
     image: cockroachdb/cockroach:v23.1.11
     hostname: cockroachdb
     command: start-single-node --insecure
     ports:
-      - 26257:26257
+      - 26001:26257
   
-  cockroachdb-init:
+  product_db_init:
     image: cockroachdb/cockroach:v23.1.11
     volumes:
-      - ./create_database.sh:/create_database.sh
+      - ./init_product.sh:/init_product.sh
     entrypoint: "/bin/bash"
-    command: /create_database.sh
+    command: /init_product.sh
     depends_on:
-      - cockroachdb
+      - product_db
+
+  stock_db:
+    image: cockroachdb/cockroach:v23.1.11
+    hostname: cockroachdb
+    command: start-single-node --insecure
+    ports:
+      - 26002:26257
+  
+  stock_db_init:
+    image: cockroachdb/cockroach:v23.1.11
+    volumes:
+      - ./init_stock.sh:/init_stock.sh
+    entrypoint: "/bin/bash"
+    command: /init_stock.sh
+    depends_on:
+      - stock_db
   
   products_svc:
     image: products_svc
@@ -24,8 +40,8 @@ services:
     ports:
       - 3001:3000
     depends_on:
-      - cockroachdb
-      - cockroachdb-init
+      - product_db
+      - product_db_init
   
   stock_svc:
     image: stock_svc
@@ -35,5 +51,5 @@ services:
     ports:
       - 3002:3000
     depends_on:
-      - cockroachdb
-      - cockroachdb-init
+      - stock_db
+      - stock_db_init
