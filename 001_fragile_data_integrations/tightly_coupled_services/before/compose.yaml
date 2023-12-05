@@ -1,20 +1,63 @@
 services:
 
-  cockroachdb:
+  redpanda:
+    hostname: redpanda
+    image: docker.redpanda.com/redpandadata/redpanda:v22.2.2
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    ports:
+      - 9092:9092
+    networks:
+      - app-network
+
+  product_db:
     image: cockroachdb/cockroach:v23.1.11
-    hostname: cockroachdb
+    hostname: product_db
     command: start-single-node --insecure
     ports:
-      - 26257:26257
+      - 26001:26257
+    depends_on:
+      - redpanda
+    networks:
+      - app-network
   
-  cockroachdb-init:
+  product_db_init:
     image: cockroachdb/cockroach:v23.1.11
     volumes:
-      - ./create_database.sh:/create_database.sh
+      - ./init_product.sh:/init_product.sh
     entrypoint: "/bin/bash"
-    command: /create_database.sh
+    command: /init_product.sh
     depends_on:
-      - cockroachdb
+      - product_db
+    networks:
+      - app-network
+
+  stock_db:
+    image: cockroachdb/cockroach:v23.1.11
+    hostname: stock_db
+    command: start-single-node --insecure
+    ports:
+      - 26002:26257
+    networks:
+      - app-network
+  
+  stock_db_init:
+    image: cockroachdb/cockroach:v23.1.11
+    volumes:
+      - ./init_stock.sh:/init_stock.sh
+    entrypoint: "/bin/bash"
+    command: /init_stock.sh
+    depends_on:
+      - stock_db
+    networks:
+      - app-network
   
   products_svc:
     image: products_svc
@@ -24,8 +67,10 @@ services:
     ports:
       - 3001:3000
     depends_on:
-      - cockroachdb
-      - cockroachdb-init
+      - product_db
+      - product_db_init
+    networks:
+      - app-network
   
   stock_svc:
     image: stock_svc
@@ -35,5 +80,11 @@ services:
     ports:
       - 3002:3000
     depends_on:
-      - cockroachdb
-      - cockroachdb-init
+      - stock_db
+      - stock_db_init
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
