@@ -77,6 +77,15 @@ docker exec -it replica bash
 pg_ctl promote
 ```
 
+Switch load balancer to point to replica (new primary)
+
+### Summary
+
+* The failover to the replica was successfully. Now what?
+  * How do you get back to the primary?
+  * Does the primary now become the replica?
+  * How much data was lost during the outage and how to we backfill?
+
 ### Teardown
 
 ``` sh

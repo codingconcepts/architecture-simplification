@@ -28,7 +28,7 @@ func main() {
 }
 
 func readWrite(db *pgxpool.Pool) {
-	for range time.NewTicker(time.Second).C {
+	for range time.NewTicker(time.Millisecond * 50).C {
 		// Write.
 		const writeStmt = `INSERT INTO product (name, price) VALUES ($1, $2)
 											 RETURNING id`
@@ -36,7 +36,10 @@ func readWrite(db *pgxpool.Pool) {
 		name := mustRandomString(10)
 		price := round(rand.Float64()*100, 2)
 
-		row := db.QueryRow(context.Background(), writeStmt, name, price)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		row := db.QueryRow(ctx, writeStmt, name, price)
 
 		var id string
 		if err := row.Scan(&id); err != nil {
@@ -46,6 +49,10 @@ func readWrite(db *pgxpool.Pool) {
 
 		// Read.
 		const readStmt = `SELECT name, price FROM product WHERE id = $1`
+
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
 		row = db.QueryRow(context.Background(), readStmt, id)
 
 		var dbName string
