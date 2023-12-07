@@ -1,0 +1,17 @@
+services:
+  
+  cassandra:
+    image: cassandra:5.0
+    hostname: cassandra
+    container_name: cassandra
+    ports:
+      - 9042:9042
+  
+  postgres:
+    image: postgres:15.2-alpine
+    hostname: postgres
+    container_name: postgres
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: password

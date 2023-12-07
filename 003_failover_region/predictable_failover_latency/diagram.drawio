@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="kl40npOzxhW23WtnNViY" name="Page-1">
-        <mxGraphModel dx="523" dy="862" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="323" dy="862" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -22,7 +22,7 @@
                 <mxCell id="11" value="User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;rounded=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="185" y="480" width="30" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="35" value="" style="edgeStyle=none;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;fontFamily=Helvetica;fontSize=16;" edge="1" parent="1" source="12" target="34">
+                <mxCell id="35" value="" style="edgeStyle=none;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;fontFamily=Helvetica;fontSize=16;" parent="1" source="12" target="34" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="12" value="App" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" parent="1" vertex="1">
@@ -49,7 +49,7 @@
                 <mxCell id="25" value="User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;rounded=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="815" y="480" width="30" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="39" value="" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;fontFamily=Helvetica;fontSize=16;" edge="1" parent="1" source="27" target="38">
+                <mxCell id="39" value="" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;fontFamily=Helvetica;fontSize=16;" parent="1" source="27" target="38" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="27" value="App" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" parent="1" vertex="1">
@@ -58,7 +58,7 @@
                 <mxCell id="29" value="DB" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;rounded=1;fontFamily=Helvetica;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="960" y="160" width="80" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="36" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" edge="1" parent="1" source="34" target="4">
+                <mxCell id="36" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" parent="1" source="34" target="4" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="200" y="260"/>
@@ -66,10 +66,10 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="34" value="Load Balancer" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="34" value="Load Balancer" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="140" y="280" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="41" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" edge="1" parent="1" source="38" target="18">
+                <mxCell id="41" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" parent="1" source="38" target="18" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="830" y="260"/>
@@ -77,7 +77,7 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="42" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" edge="1" parent="1" source="38" target="29">
+                <mxCell id="42" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" parent="1" source="38" target="29" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="830" y="260"/>
@@ -85,10 +85,10 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="43" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" edge="1" parent="1" source="38" target="21">
+                <mxCell id="43" style="edgeStyle=orthogonalEdgeStyle;sketch=0;hachureGap=4;jiggle=2;curveFitting=1;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Helvetica;fontSize=16;" parent="1" source="38" target="21" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="38" value="Load Balancer" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="38" value="Load Balancer" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="770" y="280" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
