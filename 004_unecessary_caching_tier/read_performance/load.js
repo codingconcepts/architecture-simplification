@@ -4,6 +4,19 @@ import { randomItem } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 const products = JSON.parse(open("./ids.json"));
 
+export const options = {
+  scenarios: {
+    contacts: {
+      duration: '10s',
+      executor: 'constant-arrival-rate',
+      rate: 5000,
+      timeUnit: '1s',
+      preAllocatedVUs: 100,
+      maxVUs: 300,
+    },
+  },
+};
+
 export default function () {
   const product = randomItem(products);
   const res = http.get(`http://localhost:3000/products/${product}/stock`);

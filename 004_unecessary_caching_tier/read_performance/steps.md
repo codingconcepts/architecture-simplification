@@ -4,6 +4,7 @@ Infra
 
 ``` sh
 (cd 004_unecessary_caching_tier/read_performance && docker compose up -d)
+
 docker exec -it node1 cockroach init --insecure
 docker exec -it node1 cockroach sql --insecure
 ```
@@ -46,10 +47,7 @@ go run 004_unecessary_caching_tier/read_performance/before/main.go
 Load
 
 ``` sh
-k6 run \
-  --vus 50 \
-  --duration 10s \
-  004_unecessary_caching_tier/read_performance/load.js
+k6 run 004_unecessary_caching_tier/read_performance/load.js
 
 # ~13,300/s
 ```
@@ -60,6 +58,25 @@ DB performance tweaks
 
 ``` sh
 docker exec -it node1 cockroach sql --insecure
+```
+
+Get cluster id
+
+``` sql
+SELECT crdb_internal.cluster_id();
+```
+
+Generate license
+
+``` sh
+crl-lic -type "Evaluation" -org "Rob Test" -months 1 2ecc21ea-0cb2-444a-bd86-ea23e2ae6749
+```
+
+Apply license
+
+``` sql
+SET CLUSTER SETTING cluster.organization = 'Rob Test';
+SET CLUSTER SETTING enterprise.license = 'crl-0-ChAuzCHqDLJESr2G6iPirmdJELrn66wGGAIiCFJvYiBUZXN0';
 ```
 
 ``` sql
@@ -86,7 +103,8 @@ k6 run \
   --duration 10s \
   004_unecessary_caching_tier/read_performance/load.js
 
-# ~8,500/s
+# ~6,700/s without any performance enhancements
+# ~8,500/s with follower reads
 ```
 
 ## Teardown

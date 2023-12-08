@@ -100,9 +100,8 @@ func simulateWrite(db *pgxpool.Pool) error {
 }
 
 func readFromDB(db *pgxpool.Pool, productID string) (int, error) {
-	const stmt = `SELECT quantity FROM stock
-								WHERE product_id = $1
-								AS OF SYSTEM TIME follower_read_timestamp()`
+	const stmt = `SELECT quantity FROM stock AS OF SYSTEM TIME follower_read_timestamp()
+								WHERE product_id = $1`
 
 	row := db.QueryRow(context.Background(), stmt, productID)
 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,7 +15,12 @@ import (
 const letters = "abcdefghijklmnopqrstuvwxyz"
 
 func main() {
-	db, err := pgxpool.New(context.Background(), "postgres://user:password@localhost:5430/postgres?sslmode=disable")
+	url, ok := os.LookupEnv("CONNECTION_STRING")
+	if !ok {
+		log.Fatalf("missing CONNECTION_STRING env var")
+	}
+
+	db, err := pgxpool.New(context.Background(), url)
 	if err != nil {
 		log.Fatalf("error connecting to database: %v", err)
 	}
