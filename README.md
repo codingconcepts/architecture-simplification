@@ -14,3 +14,4 @@ Click on the following links to open each of the scenarios:
 * [cache_coherence](004_unecessary_caching_tier/cache_coherence/steps.md)
 * [read_performance](004_unecessary_caching_tier/read_performance/steps.md)
 * [analytics_in_cockroachdb](005_unnecessary_dw_workloads/analytics_in_cockroachdb/steps.md)
+* [multi_instance_architecture](006_app_silos/multi_instance_architecture/steps.md)
