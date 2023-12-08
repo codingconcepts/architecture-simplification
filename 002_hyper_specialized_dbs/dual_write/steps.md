@@ -1,5 +1,7 @@
 # Before
 
+**CONSIDER**: ghcr.io/goccy/bigquery-emulator:latest
+
 ### Infra
 
 ``` sh
