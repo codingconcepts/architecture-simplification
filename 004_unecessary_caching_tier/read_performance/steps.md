@@ -47,9 +47,10 @@ go run 004_unecessary_caching_tier/read_performance/before/main.go
 Load
 
 ``` sh
-k6 run 004_unecessary_caching_tier/read_performance/load.js
+k6 run 004_unecessary_caching_tier/read_performance/load.js \
+  --summary-trend-stats="min,max,p(95)"
 
-# ~13,300/s
+# min=716µs    avg=3.18ms  max=71.27ms p(95)=5.96ms
 ```
 
 ## After
@@ -98,13 +99,10 @@ go run 004_unecessary_caching_tier/read_performance/after/main.go
 Load
 
 ``` sh
-k6 run \
-  --vus 50 \
-  --duration 10s \
-  004_unecessary_caching_tier/read_performance/load.js
+k6 run 004_unecessary_caching_tier/read_performance/load.js \
+  --summary-trend-stats="min,max,p(95)"
 
-# ~6,700/s without any performance enhancements
-# ~8,500/s with follower reads
+# min=1.64ms avg=7.59ms  max=47.47ms p(95)=14.67ms
 ```
 
 ## Teardown
