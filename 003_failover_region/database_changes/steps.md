@@ -23,10 +23,6 @@ k3d cluster create local \
 Deploy MySQL
 
 ``` sh
-docker pull mysql:8.1.0
-docker tag mysql:8.1.0 localhost:9090/mysql:8.1.0
-docker push localhost:9090/mysql:8.1.0
-
 kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/pv.yaml
 kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/v8.1.0.yaml
 ```
@@ -34,7 +30,7 @@ kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/v8.
 Connect to MySQL
 
 ``` sh
-kubectl run --rm -it mysqlshell --image=k3d-local-registry:9090/mysql:8.1.0 -- mysqlsh root:password@mysql --sql
+kubectl run --rm -it mysqlshell --image=mysql:8.1.0 -- mysqlsh root:password@mysql --sql
 ```
 
 Create tables
@@ -71,9 +67,53 @@ kubetail app
 Update MySQL
 
 ``` sh
-docker pull mysql:8.2.0
-docker tag mysql:8.2.0 localhost:9090/mysql:8.2.0
-docker push localhost:9090/mysql:8.2.0
-
 kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/v8.2.0.yaml
+```
+
+# After
+
+### Infra
+
+Deploy CockroachDB
+
+``` sh
+kubectl apply -f 003_failover_region/database_changes/after/manifests/cockroachdb/v23.1.11.yaml
+
+kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach init --insecure
+kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach sql --insecure
+```
+
+Create table
+
+``` sql
+CREATE TABLE purchase (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  basket_id UUID NOT NULL,
+  member_id UUID NOT NULL,
+  amount DECIMAL NOT NULL,
+  timestamp TIMESTAMP NOT NULL DEFAULT now()
+);
+```
+
+Deploy application
+
+``` sh
+cp go.* 003_failover_region/database_changes/after
+(cd 003_failover_region/database_changes/after && docker build -t app .)
+docker tag app:latest localhost:9090/app:latest
+docker push localhost:9090/app:latest
+
+kubectl rollout restart deployment app
+```
+
+Monitor application
+
+``` sh
+kubetail app
+```
+
+Update CockroachDB
+
+``` sh
+kubectl apply -f 003_failover_region/database_changes/after/manifests/cockroachdb/v23.1.12.yaml
 ```
