@@ -4,12 +4,12 @@ go 1.21
 
 require (
 	cloud.google.com/go/bigquery v1.56.0
-	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gocql/gocql v1.6.0
 	github.com/gofiber/fiber/v2 v2.51.0
 	github.com/google/uuid v1.4.0
 	github.com/jackc/pgx/v5 v5.5.0
 	github.com/redis/go-redis/v9 v9.3.0
+	github.com/samber/lo v1.39.0
 	github.com/segmentio/kafka-go v0.4.46
 	golang.org/x/sync v0.4.0
 	google.golang.org/api v0.149.0
@@ -60,6 +60,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect
 	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	golang.org/x/crypto v0.16.0 // indirect
+	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect

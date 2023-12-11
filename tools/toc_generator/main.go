@@ -5,24 +5,29 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/samber/lo"
 )
 
 func main() {
-	files, err := fineStepsFiles(".")
+	scenarios, err := findStepsFiles(".")
 	if err != nil {
 		log.Fatalf("error finding steps files: %v", err)
 	}
 
-	for _, f := range files {
-		dir := filepath.Dir(f)
-		parent := filepath.Base(dir)
-
-		fmt.Printf("* [%s](%s)\n", parent, f)
-	}
+	printScenarios(scenarios)
 }
 
-func fineStepsFiles(directory string) ([]string, error) {
-	var stepsFiles []string
+type scenario struct {
+	fullPath string
+	section  string
+	scenario string
+}
+
+func findStepsFiles(directory string) ([]scenario, error) {
+	var scenarios []scenario
 
 	visit := func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
@@ -30,7 +35,12 @@ func fineStepsFiles(directory string) ([]string, error) {
 		}
 
 		if info.Name() == "steps.md" {
-			stepsFiles = append(stepsFiles, path)
+			s := scenario{
+				fullPath: path,
+				section:  strings.Split(filepath.Clean(path), "/")[0],
+				scenario: filepath.Base(filepath.Dir(path)),
+			}
+			scenarios = append(scenarios, s)
 		}
 
 		return nil
@@ -40,5 +50,28 @@ func fineStepsFiles(directory string) ([]string, error) {
 		return nil, fmt.Errorf("walking directory: %w", err)
 	}
 
-	return stepsFiles, nil
+	return scenarios, nil
+}
+
+func printScenarios(scenarios []scenario) {
+	groupedScenarios := lo.GroupBy(scenarios, func(s scenario) string {
+		return s.section
+	})
+
+	var keys []string
+	for k := range groupedScenarios {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	keys = lo.Uniq(keys)
+
+	for _, key := range keys {
+		fmt.Printf("\n### %s\n", key)
+
+		scenarios := groupedScenarios[key]
+		for _, s := range scenarios {
+			fmt.Printf("* [%s](%s)\n", s.scenario, s.fullPath)
+		}
+	}
 }
