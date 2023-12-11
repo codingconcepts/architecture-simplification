@@ -14,7 +14,7 @@ k3d registry create local-registry --port 9090
 
 k3d cluster create local \
   --registry-use k3d-local-registry:9090 \
-  --registry-config 003_failover_region/database_changes/registries.yaml \
+  --registry-config 003_failover_region/database_upgrades/registries.yaml \
   --k3s-arg "--disable=traefik,metrics-server@server:*;agents:*" \
   --k3s-arg "--disable=servicelb@server:*" \
   --wait
@@ -23,8 +23,8 @@ k3d cluster create local \
 Deploy MySQL
 
 ``` sh
-kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/pv.yaml
-kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/v8.1.0.yaml
+kubectl apply -f 003_failover_region/database_upgrades/before/manifests/mysql/pv.yaml
+kubectl apply -f 003_failover_region/database_upgrades/before/manifests/mysql/v8.1.0.yaml
 ```
 
 Connect to MySQL
@@ -51,11 +51,11 @@ CREATE TABLE purchase (
 Deploy application
 
 ``` sh
-cp go.* 003_failover_region/database_changes/before
-(cd 003_failover_region/database_changes/before && docker build -t app .)
+cp go.* 003_failover_region/database_upgrades/before
+(cd 003_failover_region/database_upgrades/before && docker build -t app .)
 docker tag app:latest localhost:9090/app:latest
 docker push localhost:9090/app:latest
-kubectl apply -f 003_failover_region/database_changes/before/manifests/app/deployment.yaml
+kubectl apply -f 003_failover_region/database_upgrades/before/manifests/app/deployment.yaml
 ```
 
 Monitor application
@@ -67,7 +67,7 @@ kubetail app
 Update MySQL
 
 ``` sh
-kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/v8.2.0.yaml
+kubectl apply -f 003_failover_region/database_upgrades/before/manifests/mysql/v8.2.0.yaml
 ```
 
 # After
@@ -77,7 +77,7 @@ kubectl apply -f 003_failover_region/database_changes/before/manifests/mysql/v8.
 Deploy CockroachDB
 
 ``` sh
-kubectl apply -f 003_failover_region/database_changes/after/manifests/cockroachdb/v23.1.11.yaml
+kubectl apply -f 003_failover_region/database_upgrades/after/manifests/cockroachdb/v23.1.11.yaml
 
 kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach init --insecure
 kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach sql --insecure
@@ -98,8 +98,8 @@ CREATE TABLE purchase (
 Deploy application
 
 ``` sh
-cp go.* 003_failover_region/database_changes/after
-(cd 003_failover_region/database_changes/after && docker build -t app .)
+cp go.* 003_failover_region/database_upgrades/after
+(cd 003_failover_region/database_upgrades/after && docker build -t app .)
 docker tag app:latest localhost:9090/app:latest
 docker push localhost:9090/app:latest
 
@@ -115,5 +115,5 @@ kubetail app
 Update CockroachDB
 
 ``` sh
-kubectl apply -f 003_failover_region/database_changes/after/manifests/cockroachdb/v23.1.12.yaml
+kubectl apply -f 003_failover_region/database_upgrades/after/manifests/cockroachdb/v23.1.12.yaml
 ```
