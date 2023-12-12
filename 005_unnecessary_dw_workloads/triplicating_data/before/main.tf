@@ -107,8 +107,8 @@ resource "aws_lambda_function" "s3_to_bigquery" {
   role             = aws_iam_role.iam_for_lambda.arn
   handler          = "app"
   source_code_hash = data.archive_file.lambda.output_base64sha256
-
-  runtime = "go1.x"
+  runtime          = "go1.x"
+  timeout          = 10
 }
 
 resource "aws_lambda_event_source_mapping" "s3_to_bigquery" {

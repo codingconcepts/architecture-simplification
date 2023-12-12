@@ -4,7 +4,8 @@ go 1.21
 
 require (
 	cloud.google.com/go/bigquery v1.56.0
-	github.com/aws/aws-lambda-go v1.41.0
+	github.com/aws/aws-lambda-go v1.42.0
+	github.com/aws/aws-sdk-go v1.49.0
 	github.com/gocql/gocql v1.6.0
 	github.com/gofiber/fiber/v2 v2.51.0
 	github.com/google/uuid v1.4.0
@@ -40,6 +41,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect

@@ -10,6 +10,8 @@ csvs/
 **/.terraform
 .terraform*
 terraform.*
+function.zip
+app
 
 pg_replica/
 

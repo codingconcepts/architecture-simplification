@@ -5,9 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"google.golang.org/api/option"
 )
 
 func main() {
@@ -15,18 +23,131 @@ func main() {
 }
 
 func handle(ctx context.Context, e event) {
+	bigquery := mustConnectBigQuery("http://host.docker.internal:9050")
+	defer bigquery.Close()
+
+	log.Printf("* * * connected to bigquery")
+
+	sess, err := session.NewSession(&aws.Config{
+		Endpoint:         aws.String(os.Getenv("AWS_ENDPOINT_URL")),
+		Region:           aws.String("us-east-1"),
+		Credentials:      credentials.NewStaticCredentials("fake", "fake", ""),
+		S3ForcePathStyle: aws.Bool(true),
+	})
+	if err != nil {
+		log.Fatalf("error creating session: %v", err)
+	}
+
+	log.Printf("* * * connected to s3")
+
+	downloader := s3manager.NewDownloader(sess)
+
+	runner := &runner{
+		bq:         bigquery,
+		downloader: downloader,
+	}
+
+	if err = runner.sendObjectsToBigQuery(e); err != nil {
+		log.Fatalf("error sending objects to bigquery: %v", err)
+	}
+}
+
+type runner struct {
+	bq         *bigquery.Client
+	downloader *s3manager.Downloader
+}
+
+func (run *runner) sendObjectsToBigQuery(e event) error {
 	for _, record := range e.Records {
-		log.Printf("message id: %s", record.MessageID)
+		log.Printf("* * * processing event: %s", record.MessageID)
 
 		var b body
 		if err := json.Unmarshal([]byte(record.Body), &b); err != nil {
-			log.Fatalf("error unmarshalling body: %v", err)
+			return fmt.Errorf("unmarshalling body: %w", err)
 		}
 
-		for _, s3 := range b.Records {
-			fmt.Printf("s3:     %+v\n", s3.S3.Object.Key)
+		for _, r := range b.Records {
+			log.Printf("* * * processing object: %s.%s", r.S3.Bucket.Name, r.S3.Object.Key)
+
+			if err := run.sendObjectToBigQuery(r.S3.Bucket.Name, r.S3.Object.Key); err != nil {
+				return fmt.Errorf("sending object to bigquery: %w", err)
+			}
 		}
 	}
+
+	return nil
+}
+
+type cdcMessage struct {
+	After struct {
+		ID     string  `json:"id"`
+		Total  float64 `json:"total"`
+		TS     string  `json:"ts"`
+		UserID string  `json:"user_id"`
+	} `json:"after"`
+	Key []string `json:"key"`
+}
+
+func (m cdcMessage) Save() (map[string]bigquery.Value, string, error) {
+	v := map[string]bigquery.Value{
+		"id":      m.After.ID,
+		"user_id": m.After.UserID,
+		"total":   m.After.Total,
+		"ts":      m.After.TS,
+	}
+
+	return v, m.After.ID, nil
+}
+
+func (run *runner) sendObjectToBigQuery(bucket, key string) error {
+	msg, err := getCDCMessage(run.downloader, bucket, key)
+	if err != nil {
+		return fmt.Errorf("getting object from s3: %w", err)
+	}
+
+	inserter := run.bq.Dataset("example").Table("orders").Inserter()
+
+	if err := inserter.Put(context.Background(), msg); err != nil {
+		return fmt.Errorf("inserting row into bigquery: %w", err)
+	}
+
+	return nil
+}
+
+func getCDCMessage(downloader *s3manager.Downloader, bucket, key string) (cdcMessage, error) {
+	buf := aws.NewWriteAtBuffer([]byte{})
+
+	_, err := downloader.Download(
+		buf,
+		&s3.GetObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+
+	if err != nil {
+		return cdcMessage{}, fmt.Errorf("downloading object: %w", err)
+	}
+
+	var msg cdcMessage
+	if err = json.Unmarshal(buf.Bytes(), &msg); err != nil {
+		return cdcMessage{}, fmt.Errorf("parsing cdc message: %w", err)
+	}
+
+	return msg, nil
+}
+
+func mustConnectBigQuery(url string) *bigquery.Client {
+	client, err := bigquery.NewClient(
+		context.Background(),
+		"local",
+		option.WithEndpoint(url),
+		option.WithoutAuthentication(),
+	)
+	if err != nil {
+		log.Fatalf("error connecting to big query: %v", err)
+	}
+
+	return client
 }
 
 type event struct {

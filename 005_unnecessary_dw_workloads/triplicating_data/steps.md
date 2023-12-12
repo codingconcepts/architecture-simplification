@@ -57,9 +57,21 @@ SET CLUSTER SETTING kv.rangefeed.enabled = true;
 CREATE CHANGEFEED FOR TABLE orders
   INTO 's3://s3-to-bigquery?AWS_ENDPOINT=http%3A%2F%2Fhost.docker.internal%3A4566&AWS_ACCESS_KEY_ID=fake&AWS_SECRET_ACCESS_KEY=fake&AWS_REGION=us-east-1';
 
-INSERT INTO orders (user_id, total) VALUES ('7559c90e-4990-4676-bbad-b8a65e8bc01d', 10.99);
-INSERT INTO orders (user_id, total) VALUES ('ca6c14bb-a49b-49e0-ad3c-d754eec17f22', 21.98);
-INSERT INTO orders (user_id, total) VALUES ('bd3b5245-664a-463f-967e-140d4a229691', 7.37);
+INSERT INTO orders (user_id, total) VALUES (gen_random_uuid(), ROUND(random() * 100, 2));
+```
+
+### BigQuery
+
+``` sh
+bq mk \
+  --api http://localhost:9050 \
+  --project_id local \
+  example
+
+bq mk \
+  --api http://localhost:9050 \
+  --project_id local \
+  --table example.orders id:STRING,user_id:STRING,total:FLOAT,ts:TIMESTAMP
 ```
 
 ### Localstack
@@ -71,12 +83,15 @@ Terraform
 
 cp go.* 005_unnecessary_dw_workloads/triplicating_data/before/s3-to-bigquery
 (cd 005_unnecessary_dw_workloads/triplicating_data/before && terraform apply --auto-approve)
+rm 005_unnecessary_dw_workloads/triplicating_data/before/s3-to-bigquery/go.*
+rm 005_unnecessary_dw_workloads/triplicating_data/before/s3-to-bigquery/app
 ```
 
 ### Test
 
 ``` sh
 awslocal s3api list-buckets
+awslocal s3api get-bucket-location --bucket s3-to-bigquery
 awslocal s3api put-object --bucket s3-to-bigquery --key README.md --body README.md
 awslocal s3api list-objects --bucket s3-to-bigquery
 awslocal s3api get-bucket-notification-configuration --bucket s3-to-bigquery
@@ -87,6 +102,11 @@ awslocal sqs receive-message --queue-url http://sqs.us-east-1.localhost.localsta
 awslocal lambda get-function --function-name s3-to-bigquery
 
 awslocal --endpoint-url=http://localhost:4566 logs tail /aws/lambda/s3-to-bigquery --follow
+
+bq query \
+  --api http://localhost:9050 \
+  --project_id local \
+  "SELECT * FROM example.orders WHERE id IS NOT NULL"
 ```
 
 ### Teardown
