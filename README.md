@@ -21,6 +21,7 @@ Code samples to accompany the architecture simplification initiative
 
 ### 005_unnecessary_dw_workloads
 * [analytics_in_cockroachdb](005_unnecessary_dw_workloads/analytics_in_cockroachdb/steps.md)
+* [triplicating_data](005_unnecessary_dw_workloads/triplicating_data/steps.md)
 
 ### 006_app_silos
 * [multi_instance_architecture](006_app_silos/multi_instance_architecture/steps.md)
