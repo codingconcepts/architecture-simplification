@@ -2,6 +2,7 @@
 Code samples to accompany the architecture simplification initiative
 
 ### 001_fragile_data_integrations
+* [edge_computing](001_fragile_data_integrations/edge_computing/steps.md)
 * [etl](001_fragile_data_integrations/etl/steps.md)
 * [polling_clients](001_fragile_data_integrations/polling_clients/steps.md)
 * [purging_data](001_fragile_data_integrations/purging_data/steps.md)
