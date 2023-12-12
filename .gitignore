@@ -6,7 +6,12 @@ ids.json
 
 csvs/
 
-008_tightly_coupled_services/b_bounded_context/**/go.*
+**/go.*
+**/.terraform
+.terraform*
+terraform.*
+
+pg_replica/
 
 ###############
 # Go template #

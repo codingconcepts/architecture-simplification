@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	cloud.google.com/go/bigquery v1.56.0
+	github.com/aws/aws-lambda-go v1.41.0
 	github.com/gocql/gocql v1.6.0
 	github.com/gofiber/fiber/v2 v2.51.0
 	github.com/google/uuid v1.4.0
