@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -22,11 +22,12 @@ func main() {
 	lambda.Start(handle)
 }
 
-func handle(ctx context.Context, e event) {
-	bigquery := mustConnectBigQuery("http://host.docker.internal:9050")
+func handle(ctx context.Context, e event) error {
+	bigquery, err := connectBigQuery("http://host.docker.internal:9050")
+	if err != nil {
+		return fmt.Errorf("error connecting to bigquery: %w", err)
+	}
 	defer bigquery.Close()
-
-	log.Printf("* * * connected to bigquery")
 
 	sess, err := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(os.Getenv("AWS_ENDPOINT_URL")),
@@ -35,21 +36,19 @@ func handle(ctx context.Context, e event) {
 		S3ForcePathStyle: aws.Bool(true),
 	})
 	if err != nil {
-		log.Fatalf("error creating session: %v", err)
+		return fmt.Errorf("error creating session: %w", err)
 	}
-
-	log.Printf("* * * connected to s3")
-
-	downloader := s3manager.NewDownloader(sess)
 
 	runner := &runner{
 		bq:         bigquery,
-		downloader: downloader,
+		downloader: s3manager.NewDownloader(sess),
 	}
 
 	if err = runner.sendObjectsToBigQuery(e); err != nil {
-		log.Fatalf("error sending objects to bigquery: %v", err)
+		return fmt.Errorf("error sending objects to bigquery: %w", err)
 	}
+
+	return nil
 }
 
 type runner struct {
@@ -59,16 +58,12 @@ type runner struct {
 
 func (run *runner) sendObjectsToBigQuery(e event) error {
 	for _, record := range e.Records {
-		log.Printf("* * * processing event: %s", record.MessageID)
-
 		var b body
 		if err := json.Unmarshal([]byte(record.Body), &b); err != nil {
 			return fmt.Errorf("unmarshalling body: %w", err)
 		}
 
 		for _, r := range b.Records {
-			log.Printf("* * * processing object: %s.%s", r.S3.Bucket.Name, r.S3.Object.Key)
-
 			if err := run.sendObjectToBigQuery(r.S3.Bucket.Name, r.S3.Object.Key); err != nil {
 				return fmt.Errorf("sending object to bigquery: %w", err)
 			}
@@ -100,21 +95,23 @@ func (m cdcMessage) Save() (map[string]bigquery.Value, string, error) {
 }
 
 func (run *runner) sendObjectToBigQuery(bucket, key string) error {
-	msg, err := getCDCMessage(run.downloader, bucket, key)
+	msgs, err := getCDCMessage(run.downloader, bucket, key)
 	if err != nil {
 		return fmt.Errorf("getting object from s3: %w", err)
 	}
 
-	inserter := run.bq.Dataset("example").Table("orders").Inserter()
+	for _, msg := range msgs {
+		inserter := run.bq.Dataset("example").Table("orders").Inserter()
 
-	if err := inserter.Put(context.Background(), msg); err != nil {
-		return fmt.Errorf("inserting row into bigquery: %w", err)
+		if err := inserter.Put(context.Background(), msg); err != nil {
+			return fmt.Errorf("inserting row into bigquery: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func getCDCMessage(downloader *s3manager.Downloader, bucket, key string) (cdcMessage, error) {
+func getCDCMessage(downloader *s3manager.Downloader, bucket, key string) ([]cdcMessage, error) {
 	buf := aws.NewWriteAtBuffer([]byte{})
 
 	_, err := downloader.Download(
@@ -125,18 +122,28 @@ func getCDCMessage(downloader *s3manager.Downloader, bucket, key string) (cdcMes
 		})
 
 	if err != nil {
-		return cdcMessage{}, fmt.Errorf("downloading object: %w", err)
+		return nil, fmt.Errorf("downloading object: %w", err)
 	}
 
-	var msg cdcMessage
-	if err = json.Unmarshal(buf.Bytes(), &msg); err != nil {
-		return cdcMessage{}, fmt.Errorf("parsing cdc message: %w", err)
+	lines := bytes.Split(buf.Bytes(), []byte("\n"))
+
+	var msgs []cdcMessage
+	for _, line := range lines {
+		if bytes.Equal(line, []byte("")) {
+			continue
+		}
+
+		var msg cdcMessage
+		if err = json.Unmarshal(line, &msg); err != nil {
+			return nil, fmt.Errorf("parsing cdc message: %w", err)
+		}
+		msgs = append(msgs, msg)
 	}
 
-	return msg, nil
+	return msgs, nil
 }
 
-func mustConnectBigQuery(url string) *bigquery.Client {
+func connectBigQuery(url string) (*bigquery.Client, error) {
 	client, err := bigquery.NewClient(
 		context.Background(),
 		"local",
@@ -144,10 +151,10 @@ func mustConnectBigQuery(url string) *bigquery.Client {
 		option.WithoutAuthentication(),
 	)
 	if err != nil {
-		log.Fatalf("error connecting to big query: %v", err)
+		return nil, fmt.Errorf("creating bigquery client: %w", err)
 	}
 
-	return client
+	return client, nil
 }
 
 type event struct {
