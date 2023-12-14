@@ -7,7 +7,7 @@ Start Postgres (no replication, because we don't know we need it yet)
 ``` sh
 docker run \
   -d \
-  --name postgres \
+  --name postgres_primary \
   -p 5432:5432 \
   -e POSTGRES_USER=user \
   -e POSTGRES_DB=postgres \
@@ -62,7 +62,7 @@ ALTER SYSTEM SET wal_level = 'logical';
 Restart postgres
 
 ``` sh
-docker restart postgres
+docker restart postgres_primary
 ```
 
 Connect to the shell
@@ -75,6 +75,19 @@ Commands
 
 ``` sql
 CREATE PUBLICATION replication_pub FOR TABLE purchase;
+-- OR
+SELECT pg_create_physical_replication_slot('replication_slot');
+```
+
+Grant replica access
+
+``` sh
+docker exec -it postgres_primary bash
+
+cd /var/lib/postgresql/data
+vi pg_hba.conf
+
+echo "host    replication     replica_user      0.0.0.0/               trust" >> pg_hba.conf
 ```
 
 Bring up replica
@@ -90,10 +103,10 @@ docker run \
     postgres:15.2-alpine
 ```
 
-Connect to the shell
+<!-- Connect to the shell
 
 ``` sh
-psql postgres://replica_user:password@localhost:5433/postgres 
+psql postgres://user:password@localhost:5433/postgres 
 ```
 
 Commands
@@ -110,12 +123,21 @@ CREATE TABLE purchase (
 CREATE SUBSCRIPTION replication_sub
 CONNECTION 'host=host.docker.internal dbname=postgres user=replica_user password=password application_name=replication'
 PUBLICATION replication_pub;
-```
+``` -->
 
 Connect to the container
 
 ``` sh
 docker exec -it postgres_replica bash
+
+pg_basebackup \
+  --pgdata=/var/lib/postgresql/data \
+  -R \
+  --slot=replication_slot \
+  --host=host.docker.internal \
+  --port=5432 \
+  -U replica_user \
+  -W
 ```
 
 

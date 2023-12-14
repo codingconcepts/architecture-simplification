@@ -24,7 +24,7 @@ INSERT INTO stock (product_id, quantity)
   FROM generate_series(1, 1000);
 ```
 
-Copy ids to clipboard
+Copy ids into a file
 
 ``` sh
 cockroach sql \

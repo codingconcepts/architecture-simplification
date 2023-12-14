@@ -1,0 +1,40 @@
+services:
+
+  redis:
+    image: redis:7.2.3-alpine3.18
+    container_name: redis
+    hostname: redis
+    ports:
+      - 6379:6379
+    restart: always
+    command: redis-server
+    networks:
+      - app-network
+  
+  index:
+    image: postgres:15.2-alpine
+    container_name: index
+    hostname: index
+    ports:
+      - 5432:5432
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+    networks:
+      - app-network
+
+  # indexer:
+  #   image: indexer
+  #   hostname: indexer
+  #   build:
+  #     context: services/indexer
+  #   ports:
+  #     - 3001:3000
+  #   depends_on:
+  #     - index
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
