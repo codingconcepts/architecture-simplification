@@ -1,3 +1,7 @@
+### Introduction
+
+* Anectode on my caching experience.
+
 ## Shared
 
 Infra
@@ -55,41 +59,6 @@ k6 run 004_unecessary_caching_tier/read_performance/load.js \
 
 ## After
 
-DB performance tweaks
-
-``` sh
-docker exec -it node1 cockroach sql --insecure
-```
-
-Get cluster id
-
-``` sql
-SELECT crdb_internal.cluster_id();
-```
-
-Generate license
-
-``` sh
-crl-lic -type "Evaluation" -org "Rob Test" -months 1 2ecc21ea-0cb2-444a-bd86-ea23e2ae6749
-```
-
-Apply license
-
-``` sql
-SET CLUSTER SETTING cluster.organization = 'Rob Test';
-SET CLUSTER SETTING enterprise.license = 'crl-0-ChAuzCHqDLJESr2G6iPirmdJELrn66wGGAIiCFJvYiBUZXN0';
-```
-
-``` sql
-SET CLUSTER SETTING kv.range_split.load_qps_threshold = 1000;
-
--- OR
-
-ALTER TABLE stock SPLIT AT
-SELECT rpad(to_hex(prefix::INT), 32, '0')::UUID AS split_at
-FROM generate_series(0, 255) AS prefix;
-```
-
 App
 
 ``` sh
@@ -105,8 +74,11 @@ k6 run 004_unecessary_caching_tier/read_performance/load.js \
 # min=1.64ms avg=7.59ms  max=47.47ms p(95)=14.67ms
 ```
 
-## Teardown
+### Summary
 
-``` sh
-docker ps -aq | xargs docker rm -f
-```
+* Possible to run run workloads directly against a database without a cache.
+* Try historical reads before caching; it offers a big performance boost at the cost of slightly stale data (which you'll see from caching anyway).
+* Additional application complexity.
+* Additional network latency.
+* Could use local in-memory caches but with multiple service instances, you need to orchestrate cache consistency across services.
+* Consider caching only after careful consideration and load testing. Your environment and workload will dictate your requirements on caching.

@@ -226,6 +226,11 @@ WHERE p.id IS NULL
 ORDER BY o.total DESC;
 ```
 
+### Summary
+
+* Follower reads won't interfere with other transactions or cause retries.
+* Follower read transaction will always run without interruption, as they won't get pushed because of writes occurring mid query.
+
 ### Teardown
 
 ``` sh

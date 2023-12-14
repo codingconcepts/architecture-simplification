@@ -61,8 +61,9 @@ psql "postgres://user:password@localhost:5434/postgres" \
 
 * Eventually consistent for US and JP users
 * US and JP users have write to the EU
-* No control over what gets replicated and what doesn't
+* No control over what gets replicated and what doesn't (all-or-nothing)
 * Will have to partition tables to achieve data residency
+  * This breaks down, as writes have to go through EU anyway
 
 # After
 
@@ -84,23 +85,10 @@ docker exec -it crdb_eu cockroach init --insecure
 docker exec -it crdb_eu cockroach sql --insecure 
 ```
 
-Get cluster id
-
-``` sql
-SELECT crdb_internal.cluster_id();
-```
-
-Generate license
+Convert to enterprise
 
 ``` sh
-crl-lic -type "Evaluation" -org "Rob Test" -months 1 94c069d8-be49-49c0-839c-bece1b05b9b2
-```
-
-Apply license
-
-``` sql
-SET CLUSTER SETTING cluster.organization = 'Rob Test';
-SET CLUSTER SETTING enterprise.license = 'crl-0-ChCUwGnYvklJwIOcvs4bBbmyEOqAha0GGAIiCFJvYiBUZXN0';
+enterprise --url "postgres://root@localhost:26001/?sslmode=disable"
 ```
 
 Create table and insert data
@@ -146,3 +134,8 @@ cockroach sql --url "postgres://root@localhost:26002/store?sslmode=disable" \
 cockroach sql --url "postgres://root@localhost:26003/store?sslmode=disable" \
   -e "SELECT * FROM i18n"
 ```
+
+### Summary
+
+* Globally consistent reads
+* Ability to partition data in other tables with other topology patterns with no change to the cluster.

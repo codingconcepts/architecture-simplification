@@ -103,6 +103,10 @@ INSERT INTO stock (product_id, quantity) VALUES
 (cd 004_unecessary_caching_tier/cache_coherence/after && go run main.go)
 ```
 
+### Todos
+
+* Figure out why after scenario read and writes drift
+
 ### Summary
 
 * Adding a cache ruins your ACID compliance

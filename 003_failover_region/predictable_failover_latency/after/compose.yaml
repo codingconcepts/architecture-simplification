@@ -3,7 +3,7 @@ services:
   node1:
     image: cockroachdb/cockroach:v23.1.11
     hostname: node1
-    container_name: primary
+    container_name: node1
     command: start --insecure --join=node1,node2,node3 --locality=region=us-east-1,zone=us-east-1a
     ports:
       - 26001:26257
@@ -14,8 +14,8 @@ services:
   node2:
     image: cockroachdb/cockroach:v23.1.11
     hostname: node2
-    container_name: secondary
-    command: start --insecure --join=node1,node2,node3 --locality=region=us-central-1,zone=us-central-1a
+    container_name: node2
+    command: start --insecure --join=node1,node2,node3 --locality=region=eu-central-1,zone=eu-central-1a
     ports:
       - 26002:26257
       - 8002:8080

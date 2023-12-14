@@ -104,6 +104,10 @@ AS
 
 * CDC can be just as fast as a consumer that is regularly polling for database changes, only a lot more efficient.
 
+* Less moving parts.
+
+* No breach of bounded context (only one service owns the data).
+
 ### Teardown
 
 ``` sh

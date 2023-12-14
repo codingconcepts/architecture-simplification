@@ -38,6 +38,12 @@ INSERT INTO stock (product_id, quantity) VALUES
 (cd 001_fragile_data_integrations/queue_coherence/before && go run main.go -r 100ms -w 250ms)
 ```
 
+### Summary
+
+* This demonstrates that even if writes are successful, they can arrive at different times, leading to different consumers having a different view of what is currently correct data.
+
+* If a write to either the database or queue fails, this exascerbates the inconsistencies.
+
 # After
 
 ### Create
@@ -86,6 +92,18 @@ FROM stock;
 ``` sh
 (cd 001_fragile_data_integrations/queue_coherence/after && go run main.go -r 100ms -w 1s)
 ```
+
+### Summary
+
+* There's still a chance of data being out-of-sync and semantics are still at-least once.
+
+* But we've removed complexity in the application.
+
+* And events are published in the correct order (on the same partition).
+
+* Single responsiblity for producer app.
+
+* Will never see inconsistent state in terms of lost updates due to failures in the application. Writes are atomic.
 
 ### Teardown
 

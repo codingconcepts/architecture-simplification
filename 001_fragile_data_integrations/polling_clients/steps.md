@@ -21,6 +21,9 @@ CREATE TABLE events (
 ### Run
 
 ``` sh
+(cd 001_fragile_data_integrations/polling_clients/before && go run main.go -c 1 -r 1001ms -w 100ms)
+
+# AND LEAVE RUNNING.
 (cd 001_fragile_data_integrations/polling_clients/before && go run main.go -c 5 -r 1001ms -w 100ms)
 ```
 
@@ -63,6 +66,9 @@ FROM events;
 ### Summary
 
 * CDC can be just as fast as a consumer that is regularly polling for database changes, only a lot more efficient.
+
+* After:
+  * Kafka consumers are still waiting for messages, which adds a slight additional delay.
 
 ### Teardown
 

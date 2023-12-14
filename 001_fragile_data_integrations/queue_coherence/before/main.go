@@ -17,8 +17,8 @@ import (
 var (
 	productID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
-	dbQuantities  *quantities
-	busQuantities *quantities
+	dbQuantities    *quantities
+	queueQuantities *quantities
 )
 
 func main() {
@@ -53,13 +53,13 @@ func main() {
 		name:     "db quantities",
 		products: map[string]int{},
 	}
-	busQuantities = &quantities{
+	queueQuantities = &quantities{
 		name:     "cache quantities",
 		products: map[string]int{},
 	}
 
 	go simulatePollingConsumer(db, *readInterval)
-	go simulateBusConsumer(kafkaReader)
+	go simulateQueueConsumer(kafkaReader)
 	go simulateProducer(db, kafkaWriter, *writeInterval)
 	printLoop()
 }
@@ -103,7 +103,7 @@ func simulateRead(db *pgxpool.Pool) error {
 	return nil
 }
 
-func simulateBusConsumer(reader *kafka.Reader) error {
+func simulateQueueConsumer(reader *kafka.Reader) error {
 	for {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
@@ -115,7 +115,7 @@ func simulateBusConsumer(reader *kafka.Reader) error {
 			log.Printf("stock value is not an integer: %v", err)
 		}
 
-		busQuantities.set(string(m.Key), stock)
+		queueQuantities.set(string(m.Key), stock)
 	}
 }
 
@@ -157,26 +157,26 @@ func simulateWrite(db *pgxpool.Pool, writer *kafka.Writer, stock int) error {
 func printLoop() {
 	for range time.NewTicker(time.Second).C {
 		dbQuantities.productsMu.RLock()
-		busQuantities.productsMu.RLock()
+		queueQuantities.productsMu.RLock()
 
 		lines := []string{}
 
 		for dbk, dbv := range dbQuantities.products {
-			cv := busQuantities.products[dbk]
+			cv := queueQuantities.products[dbk]
 
 			if cv != dbv {
-				lines = append(lines, fmt.Sprintf("%s (db: %d vs bus: %d)\n", dbk, dbv, cv))
+				lines = append(lines, fmt.Sprintf("%s (db: %d vs queue: %d)\n", dbk, dbv, cv))
 			}
 		}
 
 		dbQuantities.productsMu.RUnlock()
-		busQuantities.productsMu.RUnlock()
+		queueQuantities.productsMu.RUnlock()
 
 		fmt.Println("\033[H\033[2J")
 		if len(lines) > 0 {
-			fmt.Printf(strings.Join(lines, "\n"))
+			fmt.Println(strings.Join(lines, "\n"))
 		} else {
-			fmt.Println("bus and database match")
+			fmt.Println("queue and database match")
 		}
 	}
 }

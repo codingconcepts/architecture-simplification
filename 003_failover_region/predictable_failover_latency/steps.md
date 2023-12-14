@@ -87,6 +87,11 @@ Switch load balancer to point to replica (new primary)
   * Does the primary now become the replica?
   * How much data was lost during the outage and how to we backfill?
 
+* Why asynchronous and not synchronous?
+  * Synchronous replication slows everything down
+  * Sycnrhonous requires primary and secondary to be up at all times
+  * Mention (or show data loss in stand-by after failover)
+
 # After
 
 ### Infra
@@ -103,38 +108,27 @@ Switch load balancer to point to replica (new primary)
 Initialise the cluster
 
 ``` sh
-docker exec -it secondary cockroach init --insecure
-docker exec -it secondary cockroach sql --insecure 
+docker exec -it node2 cockroach init --insecure
+docker exec -it node2 cockroach sql --insecure 
 ```
 
-Get cluster id
-
-``` sql
-SELECT crdb_internal.cluster_id();
-```
-
-Generate license
+Convert to enterprise
 
 ``` sh
-crl-lic -type "Evaluation" -org "Rob Test" -months 1 b85654e0-5c89-47f3-8219-a5eb5b62c8dd
-```
-
-Apply license
-
-``` sql
-SET CLUSTER SETTING cluster.organization = 'Rob Test';
-SET CLUSTER SETTING enterprise.license = 'crl-0-ChC4VlTgXIlH84IZpetbYsjdEMuE66wGGAIiCFJvYiBUZXN0';
+enterprise --url "postgres://root@localhost:26002/?sslmode=disable"
 ```
 
 Create table and insert data
 
+> MENTION: Semantically, primary and secondary just refer to leaseholder locality preferences.
+
 ``` sql
 CREATE DATABASE store
   PRIMARY REGION "us-east-1"
-  REGIONS "us-central-1", "us-west-2";
+  REGIONS "us-west-2", "eu-central-1"
+  SURVIVE REGION FAILURE;
 
-ALTER DATABASE store SET SECONDARY REGION = "us-central-1";
-
+ALTER DATABASE store SET SECONDARY REGION = "us-west-2";
 SHOW REGIONS FROM DATABASE store;
 
 USE store;
@@ -160,20 +154,25 @@ CONNECTION_STRING=postgres://root@localhost:26257/store?sslmode=disable \
   go run 003_failover_region/predictable_failover_latency/main.go
 ```
 
-View row locality
+View row locality for a random row
 
-``` sh
+``` sql
+SET CLUSTER SETTING sql.show_ranges_deprecated_behavior.enabled = 'false';
+SET CLUSTER SETTING server.time_until_store_dead = '30s';
+
 SELECT DISTINCT
   split_part(unnest(replica_localities), ',', 1) replica_localities,
   unnest(replicas) replica,
   range_id
-FROM [SHOW RANGE FROM TABLE product FOR ROW ('eu-west1', 'b7eaba08-2d20-4109-9a39-aeba20c486a4')];
+FROM [SHOW RANGE FROM TABLE product FOR ROW ('9369476a-03da-43c5-a1de-211a95c90b3b')];
 ```
 
-Take down primary
+Take down node in primary region
 
 ``` sh
-docker stop primary
+docker stop node1
+
+docker start node1
 ```
 
 ### Teardown
@@ -181,3 +180,8 @@ docker stop primary
 ``` sh
 make teardown
 ```
+
+### Todo
+
+* View row locality after primary take-down
+* Rename containers from primary and secondary

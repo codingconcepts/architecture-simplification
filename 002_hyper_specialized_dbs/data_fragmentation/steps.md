@@ -25,18 +25,18 @@ Enable keyspace notifications
 config set notify-keyspace-events KEA
 ```
 
+Connect to database
+
+``` sh
+cockroach sql --insecure
+```
+
 Write data
 
 ``` sh
 SET e4619022-7f6f-4292-a158-673c25d7ed37 '{"id": "e4619022-7f6f-4292-a158-673c25d7ed37", "name": "Latte", "description": "A milky coffee"}'
 
 SET e8368c71-4786-484e-9101-da4396c5a411 '{"id": "e8368c71-4786-484e-9101-da4396c5a411", "name": "Cortado", "description": "A less milky coffee"}'
-```
-
-Connect to database
-
-``` sh
-cockroach sql --insecure
 ```
 
 Check for updates

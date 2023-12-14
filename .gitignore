@@ -16,6 +16,7 @@ function.zip
 app
 
 pg_replica/
+pg_data/
 
 ###############
 # Go template #

@@ -1,24 +1,33 @@
 # Before
 
+### Resources
+
+* https://stackoverflow.com/questions/32353055/how-to-start-a-stopped-docker-container-with-a-different-command
+
 ### Infra
 
 Start Postgres (no replication, because we don't know we need it yet)
 
 ``` sh
-docker run \
-  -d \
-  --name postgres_primary \
-  -p 5432:5432 \
-  -e POSTGRES_USER=user \
-  -e POSTGRES_DB=postgres \
-  -e POSTGRES_PASSWORD=password \
-    postgres:15.2-alpine
+(
+  cd 003_failover_region/database_migration/before && \
+  docker volume create --name=pg-data && \
+  docker run \
+    -d \
+    --name postgres_primary \
+    -v /db-data:/var/lib/postgresql/data \
+    -p 5432:5432 \
+    -e POSTGRES_USER=user \
+    -e POSTGRES_DB=postgres \
+    -e POSTGRES_PASSWORD=password \
+      postgres:15.2-alpine \
+)
 ```
 
 Connect
 
 ``` sh
-psql postgres://user:password@localhost:5432/postgres 
+psql postgres://user:password@localhost:5432/postgres
 ```
 
 Create table and insert data
@@ -43,12 +52,6 @@ CONNECTION_STRING="postgres://user:password@localhost:5432/postgres?sslmode=disa
 ### Migration
 
 **NOTE**: At this point, we've realised we need to migration, so need to update Postgres to enable replication.
-
-Connect to the shell
-
-``` sh
-psql postgres://user:password@localhost:5432/postgres 
-```
 
 Commands
 
@@ -84,8 +87,7 @@ Grant replica access
 ``` sh
 docker exec -it postgres_primary bash
 
-cd /var/lib/postgresql/data
-vi pg_hba.conf
+vi /var/lib/postgresql/data/pg_hba.conf
 
 echo "host    replication     replica_user      0.0.0.0/               trust" >> pg_hba.conf
 ```

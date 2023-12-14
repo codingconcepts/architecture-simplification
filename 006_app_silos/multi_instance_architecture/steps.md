@@ -5,6 +5,7 @@
 * 3 regions, all separate
 * Duplicated code to cater for differences between regions
 * Separate translations and supported languages in each region
+* Whenever you're running a global business, it's expensive.
 
 ### Infra
 
@@ -49,8 +50,9 @@ curl -s "http://localhost:3003/products?lang=ja" | jq
 * No way of getting a holistic view of the business without a data warehousing solution
 * Adding/updating a product means performing as many operations as there are regions
 * Adding/updating a translation means performing as many operations as there are regions
-* Data is duplicated everywhere
-* Muliple databases and applications to maintain
+* Data, code, infrastructure, and effort are duplicated everywhere
+* High opex costs.
+* Enforcing global constraints/rules (business or techincal) across regions, this is very hard.
 * This wouldn't be acceptable in code (DRY), so why would it be acceptable in architecture?
 
 # After
@@ -76,34 +78,16 @@ cp go.* 006_app_silos/multi_instance_architecture/after/services/global
 
 ### Run
 
-Populate the database
+Initialize the database
 
 ``` sh
-cockroach init \
-  --host localhost:26001 \
-  --insecure
+cockroach init --host localhost:26001 --insecure
 ```
 
-Generate license
+Convert to enterprise
 
 ``` sh
-cockroach sql \
-  --url "postgresql://root@localhost:26001/?sslmode=disable" \
-  -e "SELECT crdb_internal.cluster_id()"
-
-crl-lic -type "Evaluation" -org "Rob Test" -months 1 029c665d-e668-4f2a-8ff9-165a56c8b2cf
-```
-
-Apply license
-
-``` sh
-cockroach sql \
-  --url "postgresql://root@localhost:26001/?sslmode=disable" \
-  -e "SET CLUSTER SETTING cluster.organization = 'Rob Test'"
-
-cockroach sql \
-  --url "postgresql://root@localhost:26001/?sslmode=disable" \
-  -e "SET CLUSTER SETTING enterprise.license = 'crl-0-ChACnGZd5mhPKo/5FlpWyLLPEKCT8KwGGAIiCFJvYiBUZXN0'"
+enterprise --url "postgres://root@localhost:26001/?sslmode=disable"
 ```
 
 Create tables
