@@ -12,28 +12,29 @@ services:
       - app-network
   
   index:
-    image: postgres:15.2-alpine
-    container_name: index
+    image: cockroachdb/cockroach:v23.1.11
     hostname: index
+    container_name: index
+    command: start-single-node --insecure
     ports:
-      - 5432:5432
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: password
+      - 26257:26257
     networks:
       - app-network
 
-  # indexer:
-  #   image: indexer
-  #   hostname: indexer
-  #   build:
-  #     context: services/indexer
-  #   ports:
-  #     - 3001:3000
-  #   depends_on:
-  #     - index
-  #   networks:
-  #     - app-network
+  indexer:
+    image: indexer
+    hostname: indexer
+    build:
+      context: services/indexer
+    ports:
+      - 3001:3000
+    environment:
+      REDIS_URL: redis:6379
+      INDEX_URL: postgres://root@index:26257/defaultdb?sslmode=disable
+    depends_on:
+      - index
+    networks:
+      - app-network
 
 networks:
   app-network:
