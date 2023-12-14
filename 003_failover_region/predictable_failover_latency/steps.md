@@ -145,6 +145,8 @@ INSERT INTO product ("id", "name", "price") VALUES
   ('cd5069b7-d399-4d7f-a733-e96ff31671c9', 'c', 2.99),
   ('dd9e1e42-81a8-454f-afae-c5fb9fac27f3', 'd', 3.99),
   ('ec7c7142-4bbc-418a-99c5-1fe621d0aca4', 'e', 4.99);
+
+SET CLUSTER SETTING sql.show_ranges_deprecated_behavior.enabled = 'false';
 ```
 
 Run application
@@ -154,15 +156,24 @@ CONNECTION_STRING=postgres://root@localhost:26257/store?sslmode=disable \
   go run 003_failover_region/predictable_failover_latency/main.go
 ```
 
-View row locality for a random row
+Show the replica numbers
 
 ``` sql
-SET CLUSTER SETTING sql.show_ranges_deprecated_behavior.enabled = 'false';
-SET CLUSTER SETTING server.time_until_store_dead = '30s';
+SELECT DISTINCT
+  split_part(split_part(unnest(replica_localities), ',', 1), '=', 2) region,
+  split_part(split_part(unnest(replica_localities), ',', 2), '=', 2) az,
+  unnest(replicas) replica
+FROM [SHOW RANGES FROM TABLE product]
+ORDER BY replica;
+```
 
+View leaseholder locality (show that it's in the **primary** region)
+
+``` sql
 SELECT DISTINCT
   split_part(unnest(replica_localities), ',', 1) replica_localities,
   unnest(replicas) replica,
+  lease_holder,
   range_id
 FROM [SHOW RANGE FROM TABLE product FOR ROW ('9369476a-03da-43c5-a1de-211a95c90b3b')];
 ```
@@ -171,8 +182,34 @@ Take down node in primary region
 
 ``` sh
 docker stop node1
+```
 
+View leaseholder locality (show that it's in the **secondary** region)
+
+``` sql
+SELECT DISTINCT
+  split_part(unnest(replica_localities), ',', 1) replica_localities,
+  unnest(replicas) replica,
+  lease_holder,
+  range_id
+FROM [SHOW RANGE FROM TABLE product FOR ROW ('9369476a-03da-43c5-a1de-211a95c90b3b')];
+```
+
+``` sh
 docker start node1
+```
+
+View leaseholder locality (show that it's in the **primary** region)
+
+> Might need to wait a couple of minutes.
+
+``` sql
+SELECT DISTINCT
+  split_part(unnest(replica_localities), ',', 1) replica_localities,
+  unnest(replicas) replica,
+  lease_holder,
+  range_id
+FROM [SHOW RANGE FROM TABLE product FOR ROW ('9369476a-03da-43c5-a1de-211a95c90b3b')];
 ```
 
 ### Teardown
@@ -180,8 +217,3 @@ docker start node1
 ``` sh
 make teardown
 ```
-
-### Todo
-
-* View row locality after primary take-down
-* Rename containers from primary and secondary
