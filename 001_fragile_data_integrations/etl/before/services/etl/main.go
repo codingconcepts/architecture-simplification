@@ -40,15 +40,7 @@ func main() {
 	}
 	defer transformedWriter.Close()
 
-	transformedReader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{"localhost:9092"},
-		GroupID:     uuid.NewString(),
-		Topic:       "transformed",
-		StartOffset: kafka.LastOffset,
-	})
-
 	go simulateProducer(db)
-	go simulateConsumer(transformedReader)
 	simulateETL(rawReader, transformedWriter)
 }
 
@@ -62,26 +54,6 @@ func simulateProducer(db *pgxpool.Pool) error {
 		if _, err := db.Exec(context.Background(), stmt, rand.Intn(10), rand.Float64()*100, time.Now()); err != nil {
 			return fmt.Errorf("inserting event: %w", err)
 		}
-	}
-}
-
-func simulateConsumer(reader *kafka.Reader) error {
-	for {
-		m, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			log.Printf("error reading message: %v", err)
-			continue
-		}
-
-		// Parse message to determine total flight time.
-		var a after
-		if err = json.Unmarshal(m.Value, &a); err != nil {
-			log.Printf("error parsing message: %v", err)
-			continue
-		}
-
-		ts := time.Unix(a.Timestamp, 0)
-		log.Printf("\n[transformed %s] %s", time.Since(ts), string(m.Value))
 	}
 }
 

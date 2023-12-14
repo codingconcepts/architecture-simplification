@@ -61,11 +61,21 @@ WITH
 
 ### Run
 
+Consumer
+
 ``` sh
-(cd 001_fragile_data_integrations/etl/before && go run main.go)
+(cd 001_fragile_data_integrations/etl/before/services/consumer && go run main.go)
+```
+
+ETL
+
+``` sh
+(cd 001_fragile_data_integrations/etl/before/services/etl && go run main.go)
 ```
 
 # After
+
+**DON'T TEAR ANYTHING DOWN**
 
 ``` mermaid
 sequenceDiagram
