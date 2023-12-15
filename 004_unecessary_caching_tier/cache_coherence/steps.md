@@ -1,4 +1,4 @@
-### Before
+# Before
 
 Read
 
@@ -27,8 +27,6 @@ sequenceDiagram
     app->>cache: Delete value
 ```
 
-# Before simplification
-
 ### Create
 
 Infrastructure
@@ -40,7 +38,7 @@ Infrastructure
 Connect to Postgres
 
 ``` sh
-PGPASSWORD=password psql -h localhost -U postgres
+psql "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 ```
 
 Create table and populate
@@ -63,10 +61,15 @@ INSERT INTO stock (product_id, quantity) VALUES
 ### Run
 
 ``` sh
-(cd 004_unecessary_caching_tier/cache_coherence/before && go run main.go -r 100ms -w 1s)
+(cd 004_unecessary_caching_tier/cache_coherence/before && go run main.go -r 100ms -w 250ms)
 ```
 
-# After simplifcation
+### Summary
+
+* Dual writes can fail and if either fails, customers see an inconsistent view of data
+* In a dynamic environment with reads and writes, caches are often empty
+
+# After
 
 ### Create
 

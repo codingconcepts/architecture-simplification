@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"strings"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,6 +16,8 @@ import (
 )
 
 var (
+	globalMU sync.RWMutex
+
 	products = []string{
 		"93410c29-1609-484d-8662-ae2d0aa93cc4",
 		"47b0472d-708c-4377-aab4-acf8752f0ecb",
@@ -24,8 +27,11 @@ var (
 		"7098227b-4883-4992-bc32-e12335efbc8c",
 	}
 
-	dbQuantities    *quantities
-	cacheQuantities *quantities
+	reads          uint64
+	writes         uint64
+	cacheCorrect   uint64
+	cacheMiss      uint64
+	cacheIncorrect uint64
 )
 
 func main() {
@@ -54,21 +60,9 @@ func main() {
 		log.Fatalf("error pinging db: %v", err)
 	}
 
-	dbQuantities = &quantities{
-		products: map[string]int{},
-	}
-	cacheQuantities = &quantities{
-		products: map[string]int{},
-	}
-
 	go simulateReads(db, cache, *readInterval)
 	go simulateWrites(db, cache, *writeInterval)
-	printLoop()
-}
-
-type quantities struct {
-	productsMu sync.RWMutex
-	products   map[string]int
+	printLoop(db, cache)
 }
 
 type product struct {
@@ -76,18 +70,15 @@ type product struct {
 	stock int
 }
 
-func (q *quantities) set(product string, stock int) {
-	q.productsMu.Lock()
-	defer q.productsMu.Unlock()
-
-	q.products[product] = stock
-}
-
 func simulateReads(db *pgxpool.Pool, cache *redis.Client, rate time.Duration) error {
 	for range time.NewTicker(rate).C {
+		globalMU.RLock()
 		if err := simulateRead(db, cache); err != nil {
 			log.Printf("error simulating read: %v", err)
 		}
+		globalMU.RUnlock()
+
+		atomic.AddUint64(&reads, 1)
 	}
 
 	return fmt.Errorf("finished simulateReads unexectedly")
@@ -107,23 +98,15 @@ func simulateRead(db *pgxpool.Pool, cache *redis.Client) error {
 				return fmt.Errorf("reading from db: %w", err)
 			}
 
-			// Set stock in cache.
-			if err = cache.Set(context.Background(), productID, dbQuantity, 0).Err(); err != nil {
-				return fmt.Errorf("setting cache stock: %w", err)
+			// Set stock in cache but "fail" 1% of the time.
+			if rand.Intn(100) < 99 {
+				if err = cache.Set(context.Background(), productID, dbQuantity, 0).Err(); err != nil {
+					return fmt.Errorf("setting cache stock: %w", err)
+				}
 			}
-
-			// Update new cache value.
-			cacheQuantities.set(productID, dbQuantity)
 		}
 		return nil
 	}
-
-	// Update known cache value.
-	val, err := cmd.Int()
-	if err != nil {
-		return fmt.Errorf("stock value int conversion: %w", err)
-	}
-	cacheQuantities.set(productID, val)
 
 	return nil
 }
@@ -133,9 +116,13 @@ func simulateWrites(db *pgxpool.Pool, cache *redis.Client, rate time.Duration) e
 	for range time.NewTicker(rate).C {
 		stock++
 
+		globalMU.Lock()
 		if err := simulateWrite(db, cache, stock); err != nil {
 			log.Printf("error simulating write: %v", err)
 		}
+		globalMU.Unlock()
+
+		atomic.AddUint64(&writes, 1)
 	}
 
 	return fmt.Errorf("finished simulateWrites unexectedly")
@@ -145,48 +132,101 @@ func simulateWrite(db *pgxpool.Pool, cache *redis.Client, stock int) error {
 	// Pick a product.
 	productID := products[rand.Intn(len(products))]
 
-	// Update stock in database.
-	const stmt = `UPDATE stock SET quantity = $1 WHERE product_id = $2`
-	if _, err := db.Exec(context.Background(), stmt, stock, productID); err != nil {
-		return fmt.Errorf("updating database stock: %w", err)
+	// Update stock in database but "fail" 1% of the time.
+	if rand.Intn(100) < 99 {
+		const stmt = `UPDATE stock SET quantity = $1 WHERE product_id = $2`
+		if _, err := db.Exec(context.Background(), stmt, stock, productID); err != nil {
+			return fmt.Errorf("updating database stock: %w", err)
+		}
 	}
 
-	// Update known database value.
-	dbQuantities.set(productID, stock)
-
-	// Invalidate cache.
-	if err := cache.Del(context.Background(), productID).Err(); err != nil {
-		return fmt.Errorf("invalidating cache: %w", err)
+	// Invalidate cache but "fail" 1% of the time.
+	if rand.Intn(100) < 99 {
+		if err := cache.Del(context.Background(), productID).Err(); err != nil {
+			return fmt.Errorf("invalidating cache: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func printLoop() {
-	for range time.NewTicker(time.Second).C {
-		dbQuantities.productsMu.RLock()
-		cacheQuantities.productsMu.RLock()
-
-		lines := []string{}
-
-		for dbk, dbv := range dbQuantities.products {
-			cv := cacheQuantities.products[dbk]
-
-			if cv != dbv {
-				lines = append(lines, fmt.Sprintf("%s (db: %d vs cache: %d)\n", dbk, dbv, cv))
-			}
+func printLoop(db *pgxpool.Pool, cache *redis.Client) {
+	for range time.NewTicker(time.Millisecond * 100).C {
+		if err := fetchAndCheck(db, cache); err != nil {
+			log.Printf("error during check: %v", err)
+			continue
 		}
-
-		dbQuantities.productsMu.RUnlock()
-		cacheQuantities.productsMu.RUnlock()
 
 		fmt.Println("\033[H\033[2J")
-		if len(lines) > 0 {
-			fmt.Println(strings.Join(lines, "\n"))
-		} else {
-			fmt.Println("cache and database match")
+		fmt.Printf("reads:           %d\n", atomic.LoadUint64(&reads))
+		fmt.Printf("writes:          %d\n", atomic.LoadUint64(&writes))
+		fmt.Println()
+		fmt.Printf("cache correct:   %d\n", atomic.LoadUint64(&cacheCorrect))
+		fmt.Printf("cache incorrect: %d\n", atomic.LoadUint64(&cacheIncorrect))
+		fmt.Printf("cache miss:      %d\n", atomic.LoadUint64(&cacheMiss))
+	}
+}
+
+func fetchAndCheck(db *pgxpool.Pool, cache *redis.Client) error {
+	globalMU.Lock()
+	defer globalMU.Unlock()
+
+	// Fetch database values.
+	dbProducts := map[string]int{}
+
+	rows, err := db.Query(context.Background(), "SELECT product_id, quantity FROM stock")
+	if err != nil {
+		return fmt.Errorf("error getting db values: %w", err)
+	}
+
+	for rows.Next() {
+		var p product
+		if err = rows.Scan(&p.id, &p.stock); err != nil {
+			return fmt.Errorf("error scanning db value: %w", err)
+		}
+		dbProducts[p.id] = p.stock
+	}
+
+	// Fetch cache values.
+	cacheProducts := map[string]int{}
+	cmd := cache.MGet(context.Background(), products...)
+	result, err := cmd.Result()
+	if err != nil {
+		return fmt.Errorf("error getting cache values: %w", err)
+	}
+
+	for i, r := range result {
+		stockString, ok := r.(string)
+		if !ok {
+			continue
+		}
+
+		stock, err := strconv.Atoi(stockString)
+		if err != nil {
+			continue
+		}
+
+		cacheProducts[products[i]] = stock
+	}
+
+	// Compare.
+	success := true
+	for dbk, dbv := range dbProducts {
+		cv, ok := cacheProducts[dbk]
+		if !ok {
+			atomic.AddUint64(&cacheMiss, 1)
+			success = false
+		} else if cv != dbv {
+			atomic.AddUint64(&cacheIncorrect, 1)
+			success = false
 		}
 	}
+
+	if success {
+		atomic.AddUint64(&cacheCorrect, 1)
+	}
+
+	return nil
 }
 
 func readFromDB(db *pgxpool.Pool, productID string) (int, error) {
