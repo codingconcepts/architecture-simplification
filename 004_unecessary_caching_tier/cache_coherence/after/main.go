@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
+	globalMU sync.RWMutex
+
 	products = []string{
 		"93410c29-1609-484d-8662-ae2d0aa93cc4",
 		"47b0472d-708c-4377-aab4-acf8752f0ecb",
@@ -22,8 +24,8 @@ var (
 		"7098227b-4883-4992-bc32-e12335efbc8c",
 	}
 
-	writeQuantities *quantities
-	readQuantities  *quantities
+	reads  uint64
+	writes uint64
 )
 
 func main() {
@@ -37,35 +39,20 @@ func main() {
 		log.Fatalf("error pinging db: %v", err)
 	}
 
-	writeQuantities = &quantities{
-		products: map[string]int{},
-	}
-	readQuantities = &quantities{
-		products: map[string]int{},
-	}
-
 	go simulateReads(db, time.Millisecond*10)
 	go simulateWrites(db, time.Millisecond*100)
 	printLoop()
 }
 
-type quantities struct {
-	productsMu sync.RWMutex
-	products   map[string]int
-}
-
-func (q *quantities) set(product string, stock int) {
-	q.productsMu.Lock()
-	defer q.productsMu.Unlock()
-
-	q.products[product] = stock
-}
-
 func simulateReads(db *pgxpool.Pool, rate time.Duration) error {
 	for range time.NewTicker(rate).C {
+		globalMU.RLock()
 		if err := simulateRead(db); err != nil {
 			log.Printf("error simulating read: %v", err)
 		}
+		globalMU.RUnlock()
+
+		atomic.AddUint64(&reads, 1)
 	}
 
 	return fmt.Errorf("finished simulateReads unexectedly")
@@ -76,12 +63,10 @@ func simulateRead(db *pgxpool.Pool) error {
 	productID := products[rand.Intn(len(products))]
 
 	// Read stock from database.
-	stock, err := readFromDB(db, productID)
+	_, err := readFromDB(db, productID)
 	if err != nil {
 		return fmt.Errorf("reading from db: %w", err)
 	}
-
-	readQuantities.set(productID, stock)
 
 	return nil
 }
@@ -91,9 +76,13 @@ func simulateWrites(db *pgxpool.Pool, rate time.Duration) error {
 	for range time.NewTicker(rate).C {
 		stock++
 
+		globalMU.Lock()
 		if err := simulateWrite(db, stock); err != nil {
 			log.Printf("error simulating write: %v", err)
 		}
+		globalMU.Unlock()
+
+		atomic.AddUint64(&writes, 1)
 	}
 
 	return fmt.Errorf("finished simulateWrites unexectedly")
@@ -103,13 +92,13 @@ func simulateWrite(db *pgxpool.Pool, stock int) error {
 	// Pick a product.
 	productID := products[rand.Intn(len(products))]
 
-	// Update stock in database.
-	const stmt = `UPDATE stock SET quantity = $1 WHERE product_id = $2`
-	if _, err := db.Exec(context.Background(), stmt, stock, productID); err != nil {
-		return fmt.Errorf("updating database stock: %w", err)
+	// Update stock in database but "fail" 1% of the time.
+	if rand.Intn(100) < 99 {
+		const stmt = `UPDATE stock SET quantity = $1 WHERE product_id = $2`
+		if _, err := db.Exec(context.Background(), stmt, stock, productID); err != nil {
+			return fmt.Errorf("updating database stock: %w", err)
+		}
 	}
-
-	writeQuantities.set(productID, stock)
 
 	return nil
 }
@@ -128,28 +117,9 @@ func readFromDB(db *pgxpool.Pool, productID string) (int, error) {
 }
 
 func printLoop() {
-	for range time.NewTicker(time.Second).C {
-		writeQuantities.productsMu.RLock()
-		readQuantities.productsMu.RLock()
-
-		lines := []string{}
-
-		for dbk, dbv := range writeQuantities.products {
-			cv := readQuantities.products[dbk]
-
-			if cv != dbv {
-				lines = append(lines, fmt.Sprintf("%s (write: %d vs read: %d)\n", dbk, dbv, cv))
-			}
-		}
-
-		writeQuantities.productsMu.RUnlock()
-		readQuantities.productsMu.RUnlock()
-
+	for range time.NewTicker(time.Millisecond * 100).C {
 		fmt.Println("\033[H\033[2J")
-		if len(lines) > 0 {
-			fmt.Println(strings.Join(lines, "\n"))
-		} else {
-			fmt.Println("write and read values match")
-		}
+		fmt.Printf("reads:  %d\n", atomic.LoadUint64(&reads))
+		fmt.Printf("writes: %d\n", atomic.LoadUint64(&writes))
 	}
 }
