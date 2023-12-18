@@ -2,6 +2,7 @@
 Code samples to accompany the architecture simplification initiative
 
 ### 001_fragile_data_integrations
+* [business_transactions](001_fragile_data_integrations/business_transactions/steps.md)
 * [edge_computing](001_fragile_data_integrations/edge_computing/steps.md)
 * [etl](001_fragile_data_integrations/etl/steps.md)
 * [polling_clients](001_fragile_data_integrations/polling_clients/steps.md)
@@ -10,9 +11,11 @@ Code samples to accompany the architecture simplification initiative
 * [tightly_coupled_services](001_fragile_data_integrations/tightly_coupled_services/steps.md)
 
 ### 002_hyper_specialized_dbs
+* [data_fragmentation](002_hyper_specialized_dbs/data_fragmentation/steps.md)
 * [dual_write](002_hyper_specialized_dbs/dual_write/steps.md)
 
 ### 003_failover_region
+* [database_migration](003_failover_region/database_migration/steps.md)
 * [database_upgrades](003_failover_region/database_upgrades/steps.md)
 * [predictable_failover_latency](003_failover_region/predictable_failover_latency/steps.md)
 
