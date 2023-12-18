@@ -15,8 +15,10 @@ key.pem
 function.zip
 app
 
-pg_replica/
 pg_data/
+pgdata/
+pg_archive/
+pg_replica/
 
 ###############
 # Go template #

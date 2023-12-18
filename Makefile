@@ -4,6 +4,8 @@ toc:
 teardown:
 	- pkill -9 cockroach
 	- docker ps -aq | xargs docker rm -f
-	- docker volume rm pg-data
-	- rm -rf inflight_trace_dump **/inflight_trace_dump **/pgdata
+	- docker volume rm pg_primary pg_replica
+	- rm -rf inflight_trace_dump
+	- rm -rf **/inflight_trace_dump
+	- rm -if **/pgdata **/pg_archive
 	- k3d cluster delete local

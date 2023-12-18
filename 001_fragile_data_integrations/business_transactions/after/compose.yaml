@@ -1,0 +1,96 @@
+services:
+
+  redpanda:
+    hostname: redpanda
+    image: docker.redpanda.com/redpandadata/redpanda:v22.2.2
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    ports:
+      - 9092:9092
+    networks:
+      - app-network
+
+  cockroachdb:
+    image: cockroachdb/cockroach:v23.1.11
+    hostname: cockroachdb
+    command: start-single-node --insecure
+    ports:
+      - 26001:26257
+    depends_on:
+      - redpanda
+    networks:
+      - app-network
+  
+  cockroachdb_init:
+    image: cockroachdb/cockroach:v23.1.11
+    volumes:
+      - ./init_db.sh:/init_db.sh
+    entrypoint: "/bin/bash"
+    command: /init_db.sh
+    depends_on:
+      - cockroachdb
+    networks:
+      - app-network
+  
+  order_svc:
+    image: order_svc
+    hostname: order_svc
+    build:
+      context: services/orders
+    ports:
+      - 3001:3000
+    depends_on:
+      - cockroachdb
+      - cockroachdb_init
+    networks:
+      - app-network
+
+  payment_svc:
+    image: payment_svc
+    hostname: payment_svc
+    build:
+      context: services/payments
+    ports:
+      - 3001:3000
+    depends_on:
+      - cockroachdb
+      - cockroachdb_init
+    networks:
+      - app-network
+
+  inventory_svc:
+    image: inventory_svc
+    hostname: inventory_svc
+    build:
+      context: services/inventory
+    ports:
+      - 3001:3000
+    depends_on:
+      - cockroachdb
+      - cockroachdb_init
+    networks:
+      - app-network
+
+  fulfillment_svc:
+    image: fulfillment_svc
+    hostname: fulfillment_svc
+    build:
+      context: services/fulfillment
+    ports:
+      - 3001:3000
+    depends_on:
+      - cockroachdb
+      - cockroachdb_init
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
