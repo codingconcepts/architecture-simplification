@@ -67,7 +67,59 @@ go run 001_fragile_data_integrations/cdc/main.go \
 ### Infra
 
 ``` sh
+make teardown
 
+(cd 001_fragile_data_integrations/cdc/after && docker compose up -d)
+```
+
+Convert to enterprise
+
+``` sh
+enterprise --url "postgres://root@localhost:26257/?sslmode=disable"
+```
+
+Connect
+
+``` sh
+cockroach sql --insecure
+```
+
+Create table and changefeed 
+
+``` sql
+CREATE TABLE payment (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  amount DECIMAL NOT NULL,
+  ts TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+SET CLUSTER SETTING kv.rangefeed.enabled = true;
+
+CREATE CHANGEFEED INTO 'kafka://redpanda:29092?topic_name=events.public.payment'
+WITH
+  envelope=wrapped,
+  kafka_sink_config = '{"Flush": {"MaxMessages": 1, "Frequency": "100ms"}, "RequiredAcks": "ONE"}'
+AS SELECT
+  "id",
+  "amount",
+  "ts"
+FROM payment;
+```
+
+### Run
+
+Listen for changes
+
+``` sh
+kafkactl create topic events.public.payment
+kafkactl consume events.public.payment
+```
+
+Run application
+
+``` sh
+go run 001_fragile_data_integrations/cdc/main.go \
+  --url "postgres://root@localhost:26257/?sslmode=disable"
 ```
 
 # Cleanup

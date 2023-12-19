@@ -82,8 +82,8 @@ func round(val float64, precision int) float64 {
 type paymentEvent struct {
 	After struct {
 		ID     string    `json:"id"`
-		Amount string    `json:"amount"`
-		Ts     time.Time `json:"ts"`
+		Amount float64   `json:"amount"`
+		TS     time.Time `json:"ts"`
 	} `json:"after"`
 }
 
@@ -108,7 +108,12 @@ func compareAndPrint(msg kafka.Message) error {
 		return fmt.Errorf("parsing event: %w", err)
 	}
 
-	diff := time.Since(pe.After.Ts)
+	paymentsMu.Lock()
+	defer paymentsMu.Unlock()
+
+	delete(payments, pe.After.ID)
+
+	diff := time.Since(pe.After.TS)
 	fmt.Printf("average delay: %s (%d messages)\n", avgDelay(diff), atomic.LoadUint64(&messagesPublished))
 	return nil
 }
