@@ -34,22 +34,17 @@ Start Postgres (no replication, because we don't know we need it yet)
 )
 ```
 
-Connect
+Create table
 
 ``` sh
-psql postgres://user:password@localhost:5432/postgres
-```
-
-Create table and insert data
-
-``` sql
-CREATE TABLE purchase (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  basket_id UUID NOT NULL,
-  member_id UUID NOT NULL,
-  amount DECIMAL NOT NULL,
-  timestamp TIMESTAMP NOT NULL DEFAULT now()
-);
+psql postgres://user:password@localhost:5432/postgres \
+  -c 'CREATE TABLE purchase (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        basket_id UUID NOT NULL,
+        member_id UUID NOT NULL,
+        amount DECIMAL NOT NULL,
+        timestamp TIMESTAMP NOT NULL DEFAULT now()
+      );'
 ```
 
 Run application
@@ -65,9 +60,12 @@ CONNECTION_STRING="postgres://user:password@localhost:5432/postgres?sslmode=disa
 
 Commands
 
-``` sql
-CREATE ROLE replica_user WITH REPLICATION LOGIN PASSWORD 'password';
-GRANT ALL PRIVILEGES ON DATABASE postgres TO replica_user;
+``` sh
+psql postgres://user:password@localhost:5432/postgres \
+  -c "CREATE ROLE replica_user WITH REPLICATION LOGIN PASSWORD 'password';"
+
+psql postgres://user:password@localhost:5432/postgres \
+  -c "GRANT ALL PRIVILEGES ON DATABASE postgres TO replica_user;"
 ```
 
 Grant replica access
@@ -116,12 +114,6 @@ chown postgres -R /data
 echo "data_directory = '/data'" >> /var/lib/postgresql/data/postgresql.conf
 
 docker restart postgres_replica
-```
-
-Connect to the shell
-
-``` sh
-psql postgres://user:password@localhost:5431/postgres 
 ```
 
 Stop the primary
