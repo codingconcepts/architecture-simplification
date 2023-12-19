@@ -19,6 +19,7 @@ pg_data/
 pgdata/
 pg_archive/
 pg_replica/
+cockroach-data/
 
 ###############
 # Go template #

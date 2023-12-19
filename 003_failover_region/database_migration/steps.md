@@ -56,7 +56,7 @@ Run application
 
 ``` sh
 CONNECTION_STRING="postgres://user:password@localhost:5432/postgres?sslmode=disable" \
-  go run 003_failover_region/database_migration/before/main.go
+  go run 003_failover_region/database_migration/main.go
 ```
 
 ### Migration
@@ -142,5 +142,142 @@ Restart application against replica
 
 ``` sh
 CONNECTION_STRING="postgres://user:password@localhost:5431/postgres?sslmode=disable" \
-  go run 003_failover_region/database_migration/before/main.go
+  go run 003_failover_region/database_migration/main.go
+```
+
+# After
+
+Create a cluster
+
+``` sh
+cd 003_failover_region/database_migration/after
+
+cockroach start \
+  --insecure \
+  --store=path=node1 \
+  --locality=region=us-east-1 \
+  --listen-addr=localhost:26257 \
+  --http-addr=localhost:8080 \
+  --join='localhost:26257,localhost:26258,localhost:26259' & \
+cockroach start \
+  --insecure \
+  --store=path=node2 \
+  --locality=region=us-east-1  \
+  --listen-addr=localhost:26258 \
+  --http-addr=localhost:8081 \
+  --join='localhost:26257,localhost:26258,localhost:26259' & \
+cockroach start \
+  --insecure \
+  --store=path=node3 \
+  --locality=region=us-east-1  \
+  --listen-addr=localhost:26259 \
+  --http-addr=localhost:8082 \
+  --join='localhost:26257,localhost:26258,localhost:26259'
+
+cockroach init --host localhost:26257 --insecure
+```
+
+Start load balancer
+
+``` sh
+go run lb.go \
+  -server localhost:26257 \
+  -server localhost:26258 \
+  -server localhost:26259 \
+  -d
+```
+
+Create table
+
+``` sh
+cockroach sql --host localhost:26000 --insecure \
+  -e 'CREATE TABLE purchase (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        basket_id UUID NOT NULL,
+        member_id UUID NOT NULL,
+        amount DECIMAL NOT NULL,
+        timestamp TIMESTAMP NOT NULL DEFAULT now()
+      );'
+```
+
+Run application
+
+``` sh
+CONNECTION_STRING="postgres://root@localhost:26000/?sslmode=disable" \
+  go run ../main.go
+```
+
+Add new nodes to the cluster
+
+``` sh
+cockroach start \
+  --insecure \
+  --store=path=node4 \
+  --locality=region=us-east-2 \
+  --listen-addr=localhost:26260 \
+  --http-addr=localhost:8083 \
+  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262' & \
+cockroach start \
+  --insecure \
+  --store=path=node5 \
+  --locality=region=us-east-2  \
+  --listen-addr=localhost:26261 \
+  --http-addr=localhost:8084 \
+  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262' & \
+cockroach start \
+  --insecure \
+  --store=path=node6 \
+  --locality=region=us-east-2  \
+  --listen-addr=localhost:26262 \
+  --http-addr=localhost:8085 \
+  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262'
+```
+
+**Wait for replication**
+
+Add new nodes to load balancer
+
+``` sh
+curl -s -X POST http://localhost:8000/servers \
+  -H 'Content-Type:application/json' \
+  -d '{"server": "localhost:26260"}'
+
+curl -s -X POST http://localhost:8000/servers \
+  -H 'Content-Type:application/json' \
+  -d '{"server": "localhost:26261"}'
+
+curl -s -X POST http://localhost:8000/servers \
+  -H 'Content-Type:application/json' \
+  -d '{"server": "localhost:26262"}'
+```
+
+Remove original nodes from load balancer
+
+``` sh
+curl -s -X DELETE http://localhost:8000/servers \
+  -H 'Content-Type:application/json' \
+  -d '{"server": "localhost:26257"}'
+
+curl -s -X DELETE http://localhost:8000/servers \
+  -H 'Content-Type:application/json' \
+  -d '{"server": "localhost:26258"}'
+
+curl -s -X DELETE http://localhost:8000/servers \
+  -H 'Content-Type:application/json' \
+  -d '{"server": "localhost:26259"}'
+```
+
+Decommission original nodes
+
+``` sh
+cockroach node decommission 1 --host localhost:26260 --insecure
+cockroach node decommission 2 --host localhost:26260 --insecure
+cockroach node decommission 3 --host localhost:26260 --insecure
+```
+
+### Teardown
+
+``` sh
+make teardown
+rm -rf **/node*
 ```
