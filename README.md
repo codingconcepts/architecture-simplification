@@ -9,7 +9,6 @@ Code samples to accompany the architecture simplification initiative
 * [polling_clients](001_fragile_data_integrations/polling_clients/steps.md)
 * [purging_data](001_fragile_data_integrations/purging_data/steps.md)
 * [queue_coherence](001_fragile_data_integrations/queue_coherence/steps.md)
-* [tightly_coupled_services](001_fragile_data_integrations/tightly_coupled_services/steps.md)
 
 ### 002_hyper_specialized_dbs
 * [data_fragmentation](002_hyper_specialized_dbs/data_fragmentation/steps.md)
