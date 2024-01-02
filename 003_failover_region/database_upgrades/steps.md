@@ -27,6 +27,12 @@ kubectl apply -f 003_failover_region/database_upgrades/before/manifests/mysql/pv
 kubectl apply -f 003_failover_region/database_upgrades/before/manifests/mysql/v8.1.0.yaml
 ```
 
+Wait for MySQL
+
+``` sh
+see kubectl get pods -A
+```
+
 Connect to MySQL
 
 ``` sh
@@ -81,6 +87,12 @@ kubectl apply -f 003_failover_region/database_upgrades/after/manifests/cockroach
 
 kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach init --insecure
 kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach sql --insecure
+```
+
+Wait for CockroachDB
+
+``` sh
+see kubectl get pods -A
 ```
 
 Create table

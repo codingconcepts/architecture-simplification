@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/bigquery v1.56.0
 	github.com/aws/aws-lambda-go v1.42.0
 	github.com/aws/aws-sdk-go v1.49.0
+	github.com/cockroachdb/cockroach-go/v2 v2.3.5
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gocql/gocql v1.6.0
 	github.com/gofiber/fiber/v2 v2.51.0
