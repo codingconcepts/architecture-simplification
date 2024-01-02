@@ -20,6 +20,8 @@ pgdata/
 pg_archive/
 pg_replica/
 cockroach-data/
+node_modules/
+node*/
 
 ###############
 # Go template #

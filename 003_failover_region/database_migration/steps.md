@@ -196,7 +196,7 @@ Run application
 
 ``` sh
 CONNECTION_STRING="postgres://root@localhost:26000/?sslmode=disable" \
-  go run ../main.go
+  go run 003_failover_region/database_migration/main.go
 ```
 
 Add new nodes to the cluster

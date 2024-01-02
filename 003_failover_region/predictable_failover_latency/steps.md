@@ -48,7 +48,7 @@ Query table
 SELECT count(*) FROM product;
 ```
 
-Spin up load balancer
+Spin up load balancer and select the primary database
 
 ``` sh
 dp \
@@ -93,6 +93,8 @@ Switch load balancer to point to replica (new primary)
   * Mention (or show data loss in stand-by after failover)
 
 # After
+
+**3 console windows**
 
 ### Infra
 
