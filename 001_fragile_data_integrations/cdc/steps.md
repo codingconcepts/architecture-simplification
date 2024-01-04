@@ -8,10 +8,12 @@ Containers
 (cd 001_fragile_data_integrations/cdc/before && docker compose up -d)
 ```
 
+> Mention that the Debezium container sets up logical replication and host-based-authentication (more to manage)
+
 Kafka topic and consumer
 
 ``` sh
-kafkactl consume events.public.payment
+kafkactl create topic events.public.payment
 ```
 
 Table
@@ -41,7 +43,7 @@ curl "localhost:8083/connectors" \
           "database.dbname" : "postgres",
           "topic.prefix": "events",
           "tasks.max": 1,
-          "decimal.handling.mode": "string",
+          "decimal.handling.mode": "double",
           "include.schema.changes": "false"
         }
       }'
@@ -121,6 +123,17 @@ Run application
 go run 001_fragile_data_integrations/cdc/main.go \
   --url "postgres://root@localhost:26257/?sslmode=disable"
 ```
+
+# Summary
+
+* Thanks to CockroachDB's in-built CDC capabilities, we've removed:
+  * A component from our architecture
+  * ...along with network hops and latencies to and from it
+  * ...and any maintenance it would have required
+* CDC isn't new to CockroachDB
+  * But having it built _into_ CockroachDB allows our customers to:
+    * Drastically simplify their architecture
+    * ...and integrate and maintain less infrastructure
 
 # Cleanup
 

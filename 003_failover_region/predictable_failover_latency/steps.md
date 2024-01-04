@@ -172,12 +172,7 @@ ORDER BY replica;
 View leaseholder locality (show that it's in the **primary** region)
 
 ``` sql
-SELECT DISTINCT
-  split_part(unnest(replica_localities), ',', 1) replica_localities,
-  unnest(replicas) replica,
-  lease_holder,
-  range_id
-FROM [SHOW RANGE FROM TABLE product FOR ROW ('9369476a-03da-43c5-a1de-211a95c90b3b')];
+1
 ```
 
 Take down node in primary region

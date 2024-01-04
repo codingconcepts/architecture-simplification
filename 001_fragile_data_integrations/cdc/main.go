@@ -22,7 +22,7 @@ var (
 	payments   = make(map[string]time.Time)
 
 	messagesPublished uint64
-	avgDelay          = rollingAverage(10)
+	avgDelay          = rollingAverage(50)
 )
 
 func main() {
