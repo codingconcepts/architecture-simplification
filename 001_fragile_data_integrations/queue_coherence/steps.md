@@ -42,9 +42,13 @@ Without errors
 
 With errors
 
+> Let's assume your business is dependent on at least once or exactly once delivery semantics. Perhaps you're publishing payment notifications between systems.
+
 ``` sh
 (cd 001_fragile_data_integrations/queue_coherence/before/errors && go run main.go -w 100ms)
 ```
+
+> In a system with dual writes, any at least once or exactly once delivery semantics guaranteed by your queue are out the window.
 
 ### Summary
 
