@@ -87,7 +87,7 @@ func simulateWrite(db *pgxpool.Pool, writer *kafka.Writer) error {
 	atomic.AddUint64(&exptectedSum, 1)
 
 	if rand.Intn(100) == 99 {
-		return fmt.Errorf("simulated error")
+		return nil
 	}
 
 	// Publish message.

@@ -20,9 +20,15 @@ CREATE TABLE events (
 
 ### Run
 
+> Mention that with just one polling consumer, we're scanning thousands of rows.
+
 ``` sh
 (cd 001_fragile_data_integrations/polling_clients/before && go run main.go -c 1 -r 1001ms -w 100ms)
+```
 
+> There's no guarantee it'll be just one polling consumer. Let's see how the situation worsens with five.
+
+``` sh
 # AND LEAVE RUNNING.
 (cd 001_fragile_data_integrations/polling_clients/before && go run main.go -c 5 -r 1001ms -w 100ms)
 ```
@@ -58,6 +64,15 @@ FROM events;
 ```
 
 ### Run
+
+woiefnwoifenowinefoiwenfwoienfwoienf
+woiefnwoifenowinefoiwenfwoienfwoienf
+woiefnwoifenowinefoiwenfwoienfwoienf
+woiefnwoifenowinefoiwenfwoienfwoienf
+woiefnwoifenowinefoiwenfwoienfwoienf
+
+Download 23.2 and see how this improves cdc performance
+
 
 ``` sh
 (cd 001_fragile_data_integrations/polling_clients/after && go run main.go -c 5 -w 100ms)

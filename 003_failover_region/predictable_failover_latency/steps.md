@@ -110,8 +110,8 @@ Switch load balancer to point to replica (new primary)
 Initialise the cluster
 
 ``` sh
-docker exec -it node2 cockroach init --insecure
-docker exec -it node2 cockroach sql --insecure 
+docker exec -it node4 cockroach init --insecure
+docker exec -it node4 cockroach sql --insecure 
 ```
 
 Convert to enterprise
@@ -172,13 +172,18 @@ ORDER BY replica;
 View leaseholder locality (show that it's in the **primary** region)
 
 ``` sql
-1
+SELECT DISTINCT
+  split_part(unnest(replica_localities), ',', 1) replica_localities,
+  unnest(replicas) replica,
+  lease_holder,
+  range_id
+FROM [SHOW RANGE FROM TABLE product FOR ROW ('9369476a-03da-43c5-a1de-211a95c90b3b')];
 ```
 
 Take down node in primary region
 
 ``` sh
-docker stop node1
+docker stop node1 node2 node3
 ```
 
 View leaseholder locality (show that it's in the **secondary** region)
@@ -193,7 +198,7 @@ FROM [SHOW RANGE FROM TABLE product FOR ROW ('9369476a-03da-43c5-a1de-211a95c90b
 ```
 
 ``` sh
-docker start node1
+docker start node1 node2 node3
 ```
 
 View leaseholder locality (show that it's in the **primary** region)

@@ -50,6 +50,8 @@ With errors
 
 > In a system with dual writes, any at least once or exactly once delivery semantics guaranteed by your queue are out the window.
 
+> The only way to protect these guarantees is to drive events from the database itself
+
 ### Summary
 
 * This demonstrates that even if writes are successful, they can arrive at different times, leading to different consumers having a different view of what is currently correct data.
