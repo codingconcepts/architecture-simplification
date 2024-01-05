@@ -1,5 +1,7 @@
 # Before
 
+**2 terminal windows (vertical)**
+
 ### Infra
 
 ``` sh
@@ -13,30 +15,71 @@ cp go.* 002_hyper_specialized_dbs/data_fragmentation/before/services/indexer
 
 ### Run
 
-Connect to redis
+Create index table
 
 ``` sh
-docker exec -it redis redis-cli
+psql "postgres://postgres:password@localhost/?sslmode=disable" \
+  -c 'CREATE TABLE product (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        description TEXT NOT NULL
+      );'
 ```
 
-Enable keyspace notifications
+Create keyspace and table (wait for a short while before attempting to connect)
 
 ``` sh
-config set notify-keyspace-events KEA
+cqlsh
 ```
 
-Connect to database
+Create keyspace and table
 
-``` sh
-cockroach sql --insecure
+``` sql
+CREATE KEYSPACE IF NOT EXISTS store
+  WITH REPLICATION = {
+    'class' : 'SimpleStrategy', 'replication_factor': 1
+  }
+  AND DURABLE_WRITES = true;
+
+USE store;
+
+CREATE TABLE product (
+  id uuid PRIMARY KEY,
+  , name text
+  , description text
+)
+WITH cdc = {
+  'enabled': 'true',
+  'postimage': 'true'
+};
 ```
 
-Write data
+Insert data
+
+``` sql
+INSERT INTO product (id, name, description)
+VALUES (a975c293-ca78-437e-b098-ef13f93f3e88, 'Latte', 'A mikly coffee');
+
+INSERT INTO product (id, name, description)
+VALUES (b1be93bd-95fd-4f78-859d-520434793fd9, 'Cortado', 'A less mikly coffee');
+
+INSERT INTO product (id, name, description)
+VALUES (cba441ec-a841-41ca-a684-69aba7aa34f6, 'Flat White', 'A less mikly coffee');
+```
+
+Watch index for updates
 
 ``` sh
-SET e4619022-7f6f-4292-a158-673c25d7ed37 '{"id": "e4619022-7f6f-4292-a158-673c25d7ed37", "name": "Latte", "description": "A milky coffee"}'
+see psql "postgres://postgres:password@localhost/?sslmode=disable" \
+  -c 'SELECT * FROM product;'
+```
 
-SET e8368c71-4786-484e-9101-da4396c5a411 '{"id": "e8368c71-4786-484e-9101-da4396c5a411", "name": "Cortado", "description": "A less milky coffee"}'
+Update data
+
+``` sql
+UPDATE product
+SET description = 'A much less mikly coffee'
+WHERE id = b1be93bd-95fd-4f78-859d-520434793fd9;
 ```
 
 Check for updates

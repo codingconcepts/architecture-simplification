@@ -1,38 +1,36 @@
 services:
 
-  redis:
-    image: redis:7.2.3-alpine3.18
-    container_name: redis
-    hostname: redis
+  scylla:
+    image: scylladb/scylla:5.4
+    hostname: scylla
+    container_name: scylla
     ports:
-      - 6379:6379
-    restart: always
-    command: redis-server
-    networks:
-      - app-network
-  
-  index:
-    image: cockroachdb/cockroach:v23.1.11
-    hostname: index
-    container_name: index
-    command: start-single-node --insecure
-    ports:
-      - 26257:26257
+      - 9042:9042
     networks:
       - app-network
 
   indexer:
     image: indexer
     hostname: indexer
+    container_name: indexer
     build:
       context: services/indexer
-    ports:
-      - 3001:3000
     environment:
-      REDIS_URL: redis:6379
-      INDEX_URL: postgres://root@index:26257/defaultdb?sslmode=disable
+      SCYLLA_URL: scylla:9042
+      INDEX_URL: postgres://postgres:password@index:5432/postgres?sslmode=disable
     depends_on:
       - index
+    networks:
+      - app-network
+  
+  index:
+    image: postgres:15.2-alpine
+    hostname: index
+    container_name: index
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: password
     networks:
       - app-network
 

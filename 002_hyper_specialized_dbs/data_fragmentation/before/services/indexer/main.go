@@ -2,22 +2,20 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"github.com/gocql/gocql"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
+	scyllacdc "github.com/scylladb/scylla-cdc-go"
 )
 
 func main() {
-	log.SetFlags(0)
-
-	redisURL, ok := os.LookupEnv("REDIS_URL")
+	scyllaURL, ok := os.LookupEnv("SCYLLA_URL")
 	if !ok {
-		log.Fatalf("missing REDIS_URL env var")
+		log.Fatal("missing SCYLLA_URL env var")
 	}
 
 	indexURL, ok := os.LookupEnv("INDEX_URL")
@@ -25,84 +23,100 @@ func main() {
 		log.Fatalf("missing INDEX_URL env var")
 	}
 
-	time.Sleep(time.Second * 10)
+	session, err := scyllaConnect(scyllaURL, 30)
+	if err != nil {
+		log.Fatalf("error connecting to scylla: %v", err)
+	}
+	defer session.Close()
 
-	// Connect to database.
 	db, err := pgxpool.New(context.Background(), indexURL)
 	if err != nil {
-		log.Fatalf("error connecting to database: %v", err)
+		log.Fatalf("error connecting to index: %v", err)
 	}
 	defer db.Close()
 
 	if err = db.Ping(context.Background()); err != nil {
-		log.Fatalf("error pinging database: %v", err)
+		log.Fatalf("error testing index connection: %v", err)
 	}
 
-	// Connect to Redis.
-	cache := redis.NewClient(&redis.Options{
-		Addr:     redisURL,
-		Password: "",
-		DB:       0,
-	})
-	defer cache.Close()
-
-	if err := cache.Ping(context.Background()).Err(); err != nil {
-		log.Fatalf("error pinging redis: %v", err)
+	cfg := &scyllacdc.ReaderConfig{
+		Session:               session,
+		TableNames:            []string{"store.product"},
+		ChangeConsumerFactory: scyllacdc.MakeChangeConsumerFactoryFromFunc(createChangeConsumer(db)),
+		Advanced: scyllacdc.AdvancedReaderConfig{
+			ConfidenceWindowSize:   time.Second,
+			PostNonEmptyQueryDelay: time.Second,
+			PostEmptyQueryDelay:    time.Second,
+			QueryTimeWindowSize:    time.Second,
+			ChangeAgeLimit:         time.Second,
+		},
 	}
 
-	mustEnsureIndex(db)
-	pipeToIndex(cache, db)
-}
+	reader, err := scyllacdc.NewReader(context.Background(), cfg)
+	if err != nil {
+		log.Fatalf("error creating cdc reader: %v", err)
+	}
 
-func mustEnsureIndex(db *pgxpool.Pool) {
-	const stmt = `CREATE TABLE IF NOT EXISTS "product" (
-									"id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-									"name" VARCHAR(255) NOT NULL,
-									"description" VARCHAR(255)
-								)`
-
-	if _, err := db.Exec(context.Background(), stmt); err != nil {
-		log.Fatalf("error creating product table: %v", err)
+	if err := reader.Run(context.Background()); err != nil {
+		log.Fatalf("error running cdc reader: %v", err)
 	}
 }
 
-type product struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
+func createChangeConsumer(db *pgxpool.Pool) func(ctx context.Context, tableName string, c scyllacdc.Change) error {
+	return func(ctx context.Context, tableName string, c scyllacdc.Change) error {
+		for _, change := range c.PostImage {
+			idRaw, ok := change.GetValue("id")
+			if !ok {
+				log.Printf("unable to get id from change row")
+				continue
+			}
 
-func pipeToIndex(cache *redis.Client, db *pgxpool.Pool) {
-	sub := cache.PSubscribe(context.Background(), "__keyevent@*__:set")
-	defer sub.PUnsubscribe(context.Background(), "__keyevent@*__:set")
+			id := idRaw.(*gocql.UUID)
+			name := change.GetAtomicChange("name")
+			description := change.GetAtomicChange("description")
 
-	for msg := range sub.Channel() {
-		value := cache.Get(context.Background(), msg.Payload)
-		raw, err := value.Bytes()
-		if err != nil {
-			log.Printf("error reading update: %v", err)
-			continue
+			err := updateIndex(
+				db,
+				*id,
+				*name.Value.(*string),
+				*description.Value.(*string),
+			)
+
+			if err != nil {
+				log.Printf("error updating index: %v", err)
+			}
 		}
 
-		var p product
-		if err = json.Unmarshal(raw, &p); err != nil {
-			log.Printf("error parsing update: %v", err)
-			continue
-		}
-
-		if err = writeToIndex(db, p); err != nil {
-			log.Printf("error writing update: %v", err)
-			continue
-		}
+		return nil
 	}
 }
 
-func writeToIndex(db *pgxpool.Pool, p product) error {
-	const stmt = `UPSERT INTO product (id, name, description) VALUES ($1, $2, $3)`
+func updateIndex(db *pgxpool.Pool, id gocql.UUID, name, description string) error {
+	const stmt = `INSERT INTO product (id, name, description) VALUES ($1, $2, $3)
+								ON CONFLICT (id)
+								DO UPDATE SET
+									name = EXCLUDED.name,
+									description = EXCLUDED.description`
 
-	if _, err := db.Exec(context.Background(), stmt, p.ID, p.Name, p.Description); err != nil {
-		return fmt.Errorf("inserting product into index: %w", err)
+	if _, err := db.Exec(context.Background(), stmt, id.String(), name, description); err != nil {
+		return fmt.Errorf("upserting product: %w", err)
 	}
 
 	return nil
+}
+
+func scyllaConnect(url string, attempts int) (*gocql.Session, error) {
+	for i := 0; i < attempts; i++ {
+		cluster := gocql.NewCluster(url)
+		session, err := cluster.CreateSession()
+		if err != nil {
+			log.Printf("error connecting to scylla: %v", err)
+			time.Sleep(time.Second * time.Duration(i))
+			continue
+		}
+
+		return session, nil
+	}
+
+	return nil, fmt.Errorf("exhausted connection attempts")
 }

@@ -10,3 +10,4 @@ teardown:
 	- rm -rf inflight_trace_dump
 	- rm -rf **/pgdata
 	- rm -rf **/pg_archive
+	- rm -Rf ~/.cassandra
