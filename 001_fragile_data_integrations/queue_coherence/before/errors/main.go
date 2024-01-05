@@ -18,8 +18,8 @@ import (
 var (
 	productID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
-	exptectedSum uint64
-	actualSum    uint64
+	exptectedCount uint64
+	actualCount    uint64
 )
 
 func main() {
@@ -63,7 +63,7 @@ func simulateQueueConsumer(reader *kafka.Reader) error {
 			log.Printf("error reading message: %v", err)
 		}
 
-		atomic.AddUint64(&actualSum, 1)
+		atomic.AddUint64(&actualCount, 1)
 	}
 }
 
@@ -84,7 +84,7 @@ func simulateWrite(db *pgxpool.Pool, writer *kafka.Writer) error {
 		return fmt.Errorf("updating database stock: %w", err)
 	}
 
-	atomic.AddUint64(&exptectedSum, 1)
+	atomic.AddUint64(&exptectedCount, 1)
 
 	if rand.Intn(100) == 99 {
 		return nil
@@ -110,7 +110,7 @@ func printLoop() {
 	for range time.NewTicker(time.Second).C {
 		fmt.Println("\033[H\033[2J")
 
-		fmt.Printf("db count:    %d\n", atomic.LoadUint64(&exptectedSum))
-		fmt.Printf("queue count: %d\n", atomic.LoadUint64(&actualSum))
+		fmt.Printf("db count:    %d\n", atomic.LoadUint64(&exptectedCount))
+		fmt.Printf("queue count: %d\n", atomic.LoadUint64(&actualCount))
 	}
 }
