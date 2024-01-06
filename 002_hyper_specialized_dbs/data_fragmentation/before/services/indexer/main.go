@@ -2,20 +2,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"time"
 
-	"github.com/gocql/gocql"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	scyllacdc "github.com/scylladb/scylla-cdc-go"
+	"github.com/segmentio/kafka-go"
 )
 
 func main() {
-	scyllaURL, ok := os.LookupEnv("SCYLLA_URL")
+	kafkaURL, ok := os.LookupEnv("KAFKA_URL")
 	if !ok {
-		log.Fatal("missing SCYLLA_URL env var")
+		log.Fatal("missing KAFKA_URL env var")
 	}
 
 	indexURL, ok := os.LookupEnv("INDEX_URL")
@@ -23,11 +23,12 @@ func main() {
 		log.Fatalf("missing INDEX_URL env var")
 	}
 
-	session, err := scyllaConnect(scyllaURL, 30)
-	if err != nil {
-		log.Fatalf("error connecting to scylla: %v", err)
-	}
-	defer session.Close()
+	kafkaReader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:     []string{kafkaURL},
+		GroupID:     uuid.NewString(),
+		Topic:       "products.store.product",
+		StartOffset: kafka.LastOffset,
+	})
 
 	db, err := pgxpool.New(context.Background(), indexURL)
 	if err != nil {
@@ -39,84 +40,69 @@ func main() {
 		log.Fatalf("error testing index connection: %v", err)
 	}
 
-	cfg := &scyllacdc.ReaderConfig{
-		Session:               session,
-		TableNames:            []string{"store.product"},
-		ChangeConsumerFactory: scyllacdc.MakeChangeConsumerFactoryFromFunc(createChangeConsumer(db)),
-		Advanced: scyllacdc.AdvancedReaderConfig{
-			ConfidenceWindowSize:   time.Second,
-			PostNonEmptyQueryDelay: time.Second,
-			PostEmptyQueryDelay:    time.Second,
-			QueryTimeWindowSize:    time.Second,
-			ChangeAgeLimit:         time.Second,
-		},
-	}
-
-	reader, err := scyllacdc.NewReader(context.Background(), cfg)
-	if err != nil {
-		log.Fatalf("error creating cdc reader: %v", err)
-	}
-
-	if err := reader.Run(context.Background()); err != nil {
-		log.Fatalf("error running cdc reader: %v", err)
-	}
+	consume(kafkaReader, db)
 }
 
-func createChangeConsumer(db *pgxpool.Pool) func(ctx context.Context, tableName string, c scyllacdc.Change) error {
-	return func(ctx context.Context, tableName string, c scyllacdc.Change) error {
-		for _, change := range c.PostImage {
-			idRaw, ok := change.GetValue("id")
-			if !ok {
-				log.Printf("unable to get id from change row")
-				continue
-			}
+type cdcEvent struct {
+	Payload struct {
+		Op    string `json:"op"`
+		After struct {
+			ID struct {
+				Value      string `json:"value"`
+				DeletionTs any    `json:"deletion_ts"`
+				Set        bool   `json:"set"`
+			} `json:"id"`
+			Ts struct {
+				Value      string `json:"value"`
+				DeletionTs any    `json:"deletion_ts"`
+				Set        bool   `json:"set"`
+			} `json:"ts"`
+			Description struct {
+				Value      string `json:"value"`
+				DeletionTs any    `json:"deletion_ts"`
+				Set        bool   `json:"set"`
+			} `json:"description"`
+			Name struct {
+				Value      string `json:"value"`
+				DeletionTs any    `json:"deletion_ts"`
+				Set        bool   `json:"set"`
+			} `json:"name"`
+		} `json:"after"`
+	} `json:"payload"`
+}
 
-			id := idRaw.(*gocql.UUID)
-			name := change.GetAtomicChange("name")
-			description := change.GetAtomicChange("description")
-
-			err := updateIndex(
-				db,
-				*id,
-				*name.Value.(*string),
-				*description.Value.(*string),
-			)
-
-			if err != nil {
-				log.Printf("error updating index: %v", err)
-			}
+func consume(reader *kafka.Reader, db *pgxpool.Pool) {
+	for {
+		msg, err := reader.ReadMessage(context.Background())
+		if err != nil {
+			log.Printf("error reading event: %v", err)
+			continue
 		}
 
-		return nil
+		var event cdcEvent
+		if err = json.Unmarshal(msg.Value, &event); err != nil {
+			log.Printf("error parsing event: %v", err)
+			continue
+		}
+
+		if err = updateIndex(db, event); err != nil {
+			log.Printf("error updating index: %v", err)
+			continue
+		}
 	}
 }
 
-func updateIndex(db *pgxpool.Pool, id gocql.UUID, name, description string) error {
-	const stmt = `INSERT INTO product (id, name, description) VALUES ($1, $2, $3)
+func updateIndex(db *pgxpool.Pool, e cdcEvent) error {
+	const stmt = `INSERT INTO product (id, name, description, ts) VALUES ($1, $2, $3, $4)
 								ON CONFLICT (id)
 								DO UPDATE SET
 									name = EXCLUDED.name,
 									description = EXCLUDED.description`
 
-	if _, err := db.Exec(context.Background(), stmt, id.String(), name, description); err != nil {
+	a := e.Payload.After
+	if _, err := db.Exec(context.Background(), stmt, a.ID, a.Name, a.Description, a.Ts); err != nil {
 		return fmt.Errorf("upserting product: %w", err)
 	}
 
 	return nil
-}
-
-func scyllaConnect(url string, attempts int) (*gocql.Session, error) {
-	for i := 0; i < attempts; i++ {
-		cluster := gocql.NewCluster(url)
-		session, err := cluster.CreateSession()
-		if err != nil {
-			log.Printf("error connecting to scylla: %v", err)
-			time.Sleep(time.Second * time.Duration(i))
-			continue
-		}
-
-		return session, nil
-	}
-
-	return nil, fmt.Errorf("exhausted connection attempts")
 }
