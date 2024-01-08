@@ -30,31 +30,17 @@ services:
       - 9042:9042
     networks:
       - app-network
-
-  # indexer:
-  #   image: indexer
-  #   hostname: indexer
-  #   container_name: indexer
-  #   build:
-  #     context: services/indexer
-  #   environment:
-  #     KAFKA_URL: kafka:29092
-  #     INDEX_URL: postgres://postgres:password@index:5432/postgres?sslmode=disable
-  #   depends_on:
-  #     - index
-  #   networks:
-  #     - app-network
   
-  # index:
-  #   image: postgres:15.2-alpine
-  #   hostname: index
-  #   container_name: index
-  #   ports:
-  #     - 5432:5432
-  #   environment:
-  #     POSTGRES_PASSWORD: password
-  #   networks:
-  #     - app-network
+  index:
+    image: postgres:15.2-alpine
+    hostname: index
+    container_name: index
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: password
+    networks:
+      - app-network
 
 networks:
   app-network:

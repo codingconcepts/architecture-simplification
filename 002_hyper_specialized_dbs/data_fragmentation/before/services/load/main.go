@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/gocql/gocql"
@@ -26,7 +27,7 @@ func insert(session *gocql.Session) {
 								VALUES (?, ?, ?, ?);`
 
 	i := 0
-	for {
+	for range time.NewTicker(time.Millisecond * 100).C {
 		id := gocql.MustRandomUUID()
 		name := gofakeit.ProductName()
 		description := gofakeit.ProductDescription()
