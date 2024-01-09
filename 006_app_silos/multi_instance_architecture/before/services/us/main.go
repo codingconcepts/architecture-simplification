@@ -29,7 +29,7 @@ func main() {
 }
 
 type product struct {
-	ID   string `json:"id"`
+	SKU  string `json:"sku"`
 	Name string `json:"name"`
 }
 
@@ -41,7 +41,7 @@ func handleGetProducts(db *pgxpool.Pool) fiber.Handler {
 		}
 
 		const stmt = `SELECT
-										p.id,
+										p.sku,
 										i.translation AS name
 									FROM products p
 									JOIN i18n i ON p.name = i.word
@@ -56,7 +56,7 @@ func handleGetProducts(db *pgxpool.Pool) fiber.Handler {
 		var products []product
 		var p product
 		for rows.Next() {
-			if err = rows.Scan(&p.ID, &p.Name); err != nil {
+			if err = rows.Scan(&p.SKU, &p.Name); err != nil {
 				log.Printf("error scanning product columns: %v", err)
 				return fiber.NewError(fiber.StatusInternalServerError, "error scanning product columns")
 			}

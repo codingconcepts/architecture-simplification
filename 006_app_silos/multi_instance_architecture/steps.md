@@ -42,14 +42,16 @@ Test the services
 ``` sh
 curl -s "http://localhost:3001/products?lang=en" | jq
 curl -s "http://localhost:3002/products?lang=es" | jq
-curl -s "http://localhost:3003/products?lang=ja" | jq
+curl -s "http://localhost:3003/products" | jq
 ```
 
 ### Summary
 
 * No way of getting a holistic view of the business without a data warehousing solution
+  * Unless all products, ids and SKUs remain consistent, there's no single consistent definition of a single product across all locations
 * Adding/updating a product means performing as many operations as there are regions
 * Adding/updating a translation means performing as many operations as there are regions
+* Changes to the database, requires separate downtime for each region
 * Data, code, infrastructure, and effort are duplicated everywhere
 * High opex costs.
 * Enforcing global constraints/rules (business or techincal) across regions, this is very hard.

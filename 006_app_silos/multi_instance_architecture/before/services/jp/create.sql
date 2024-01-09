@@ -1,12 +1,15 @@
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL
+  name VARCHAR(255) NOT NULL,
+  sku VARCHAR(255) NOT NULL,
+  price DECIMAL NOT NULL
+
 );
 
-INSERT INTO products (id, name) VALUES
-  ('ac9384f7-12f7-4431-8a78-c9ccc6d321af', 'Americano'),
-  ('bf6569f0-08fc-4a01-a3a6-2d353cdda01d', 'Cappuccino'),
-  ('c9803ecd-04f2-44e4-87ff-e3e5725f93bd', 'Latte');
+INSERT INTO products (name, sku, price) VALUES
+  ('Americano', 'C-001', 490),
+  ('Cappuccino', 'C-002', 550),
+  ('Latte', 'C-003', 580);
 
 
 CREATE TABLE i18n(
