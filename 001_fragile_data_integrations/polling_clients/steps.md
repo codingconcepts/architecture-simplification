@@ -65,15 +65,6 @@ FROM events;
 
 ### Run
 
-woiefnwoifenowinefoiwenfwoienfwoienf
-woiefnwoifenowinefoiwenfwoienfwoienf
-woiefnwoifenowinefoiwenfwoienfwoienf
-woiefnwoifenowinefoiwenfwoienfwoienf
-woiefnwoifenowinefoiwenfwoienfwoienf
-
-Download 23.2 and see how this improves cdc performance
-
-
 ``` sh
 (cd 001_fragile_data_integrations/polling_clients/after && go run main.go -c 5 -w 100ms)
 ```

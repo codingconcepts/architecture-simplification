@@ -60,8 +60,11 @@ psql "postgres://user:password@localhost:5434/postgres" \
 ### Summary
 
 * Eventually consistent for US and JP users
-* US and JP users have write to the EU
+* US and JP users have write data to the EU and wait for it to be asynchronously replicated back to their local regions
+  * Not only is this bad for user experience
+  * It's bad for regulatory compliance. Data might not be allowed to leave the US or JP
 * No control over what gets replicated and what doesn't (all-or-nothing)
+  * Which is also bad for regulator compliance
 * Will have to partition tables to achieve data residency
   * This breaks down, as writes have to go through EU anyway
 
@@ -138,4 +141,10 @@ cockroach sql --url "postgres://root@localhost:26003/store?sslmode=disable" \
 ### Summary
 
 * Globally consistent reads
+* US and JP users can read and write to their loca regions, meaning:
+  * Low read latencies
+  * Low write latencies for local data
+  * So great user experience
+  * ...and compliant with data privacy regulations
+
 * Ability to partition data in other tables with other topology patterns with no change to the cluster.

@@ -22,8 +22,6 @@ services:
     image: debezium/example-cassandra:2.5
     hostname: cassandra
     container_name: cassandra
-    environment:
-      LOG_LEVEL: INFO
     build:
       context: debezium
     ports:
