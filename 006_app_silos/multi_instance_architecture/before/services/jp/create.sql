@@ -3,7 +3,6 @@ CREATE TABLE products (
   name VARCHAR(255) NOT NULL,
   sku VARCHAR(255) NOT NULL,
   price DECIMAL NOT NULL
-
 );
 
 INSERT INTO products (name, sku, price) VALUES

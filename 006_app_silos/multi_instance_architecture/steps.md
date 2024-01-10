@@ -100,6 +100,33 @@ cockroach sql \
   < 006_app_silos/multi_instance_architecture/after/services/global/create.sql
 ```
 
+Observe data localities
+
+``` sql
+SET CLUSTER SETTING sql.show_ranges_deprecated_behavior.enabled = false;
+
+SELECT DISTINCT
+  split_part(unnest(replica_localities), ',', 1) replica_localities,
+  unnest(replicas) replica,
+  lease_holder,
+  range_id
+FROM [SHOW RANGE FROM TABLE product_markets FOR ROW ('eu-central-1', 'a50b1ae0-455d-4308-8d2f-ae17eeafd4b1', 'de')];
+
+SELECT DISTINCT
+  split_part(unnest(replica_localities), ',', 1) replica_localities,
+  unnest(replicas) replica,
+  lease_holder,
+  range_id
+FROM [SHOW RANGE FROM TABLE product_markets FOR ROW ('us-east-1', 'a50b1ae0-455d-4308-8d2f-ae17eeafd4b1', 'mx')];
+
+SELECT DISTINCT
+  split_part(unnest(replica_localities), ',', 1) replica_localities,
+  unnest(replicas) replica,
+  lease_holder,
+  range_id
+FROM [SHOW RANGE FROM TABLE product_markets FOR ROW ('ap-northeast-1', 'a50b1ae0-455d-4308-8d2f-ae17eeafd4b1', 'jp')];
+```
+
 Test the services
 
 ``` sh

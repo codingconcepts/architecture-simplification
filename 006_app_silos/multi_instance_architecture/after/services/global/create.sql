@@ -5,6 +5,12 @@ CREATE DATABASE store
 USE store;
 
 
+SET enable_super_regions = 'on';
+ALTER DATABASE store ADD SUPER REGION "eu" VALUES "eu-central-1";
+ALTER DATABASE store ADD SUPER REGION "us" VALUES "us-east-1";
+ALTER DATABASE store ADD SUPER REGION "jp" VALUES "ap-northeast-1";
+
+
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name STRING NOT NULL,
