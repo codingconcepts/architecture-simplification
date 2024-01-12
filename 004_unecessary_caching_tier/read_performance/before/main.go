@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -19,6 +20,9 @@ var (
 )
 
 func main() {
+	writeInterval := flag.Duration("w", time.Millisecond*100, "interval between writes")
+	flag.Parse()
+
 	cache := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "",
@@ -52,7 +56,7 @@ func main() {
 		log.Fatal(router.Listen(":3000"))
 	}()
 
-	simulateWrites(db, cache, time.Millisecond*100)
+	simulateWrites(db, cache, *writeInterval)
 }
 
 func mustLoadIDs(path string) []string {

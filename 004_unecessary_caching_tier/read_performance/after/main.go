@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -18,6 +19,9 @@ var (
 )
 
 func main() {
+	writeInterval := flag.Duration("w", time.Millisecond*100, "interval between writes")
+	flag.Parse()
+
 	cfg, err := pgxpool.ParseConfig("postgres://root@localhost:26257/defaultdb?sslmode=disable")
 	if err != nil {
 		log.Fatalf("error parsing db config: %v", err)
@@ -40,7 +44,7 @@ func main() {
 		log.Fatal(router.Listen(":3000"))
 	}()
 
-	simulateWrites(db, time.Millisecond*100)
+	simulateWrites(db, *writeInterval)
 }
 
 func mustLoadIDs(path string) []string {

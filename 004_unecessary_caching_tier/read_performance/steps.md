@@ -42,10 +42,15 @@ cockroach sql \
 
 ## Before
 
+**2 terminal windows**
+
+### Low write/read ratio
+
 App
 
 ``` sh
-go run 004_unecessary_caching_tier/read_performance/before/main.go
+go run 004_unecessary_caching_tier/read_performance/before/main.go \
+  -w 100ms
 ```
 
 Load
@@ -53,20 +58,42 @@ Load
 ``` sh
 k6 run 004_unecessary_caching_tier/read_performance/load.js \
   --summary-trend-stats="p(99.9)"
-
-# BEFORE
-  # http_req_duration..............: avg=3.18ms  min=612µs    med=2.82ms max=41.92ms p(90)=4.83ms p(95)=5.74ms
-
-# AFTER
-  # http_req_duration..............: avg=7.62ms  min=1.64ms med=6.71ms max=58.21ms p(90)=11.69ms p(95)=14.61ms
 ```
+
+> 99.9nth percentile latencies of around X
+
+### High write/read ratio
+
+App
+
+``` sh
+go run 004_unecessary_caching_tier/read_performance/before/main.go \
+  -w 20ms
+```
+
+Load
+
+``` sh
+k6 run 004_unecessary_caching_tier/read_performance/load.js \
+  --summary-trend-stats="p(99.9)"
+```
+
+> 99.9nth percentile latencies of around X
+
+### Summary
+
+* In an environment with balanced read/write behaviour, the value of a cache is diminished.
+* By the time we come to read a value from the cache, it's already been invalidated from previous write.
 
 ## After
 
+### Low write/read ratio
+
 App
 
 ``` sh
-go run 004_unecessary_caching_tier/read_performance/after/main.go
+go run 004_unecessary_caching_tier/read_performance/after/main.go \
+  -w 100ms
 ```
 
 Load
@@ -74,9 +101,28 @@ Load
 ``` sh
 k6 run 004_unecessary_caching_tier/read_performance/load.js \
   --summary-trend-stats="p(99.9)"
-
-# min=1.64ms avg=7.59ms  max=47.47ms p(95)=14.67ms
 ```
+
+> 99.9nth percentile latencies of around X
+
+### High write/read ratio
+
+App
+
+``` sh
+go run 004_unecessary_caching_tier/read_performance/after/main.go \
+  -w 20ms
+```
+
+Load
+
+``` sh
+k6 run 004_unecessary_caching_tier/read_performance/load.js \
+  --summary-trend-stats="p(99.9)"
+```
+
+> 99.9nth percentile latencies of around X
+
 
 ### Summary
 
