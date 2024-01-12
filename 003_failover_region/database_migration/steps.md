@@ -1,15 +1,6 @@
 # Before
 
-### Resources
-
-* https://stackoverflow.com/questions/32353055/how-to-start-a-stopped-docker-container-with-a-different-command
-
-To access the /var/lib/docker stuff, run the following:
-
-``` sh
-docker run -it --privileged --pid=host debian nsenter -t 1 -m -u -n -i sh
-ls /var/lib/docker/volumes/pgdata/_data
-```
+**2 terminal windows**
 
 ### Infra
 
@@ -80,7 +71,7 @@ echo "wal_log_hints = on" >> /var/lib/postgresql/data/postgresql.conf
 echo "archive_mode = on" >> /var/lib/postgresql/data/postgresql.conf
 echo "archive_command = 'test ! -f /mnt/server/archive/%f && cp %p /mnt/server/archive/%f'" >> /var/lib/postgresql/data/postgresql.conf
 
-# Restart twice to force archiving to start.
+# Might need to restart twice to force archiving to start.
 docker restart postgres_primary
 docker restart postgres_primary
 ```
@@ -139,6 +130,8 @@ CONNECTION_STRING="postgres://user:password@localhost:5431/postgres?sslmode=disa
 
 # After
 
+**3 terminal windows**
+
 Create a cluster
 
 ``` sh
@@ -150,21 +143,26 @@ cockroach start \
   --locality=region=us-east-1 \
   --listen-addr=localhost:26257 \
   --http-addr=localhost:8080 \
-  --join='localhost:26257,localhost:26258,localhost:26259' & \
+  --join='localhost:26257,localhost:26258,localhost:26259' \
+  --background
+
 cockroach start \
   --insecure \
   --store=path=node2 \
   --locality=region=us-east-1  \
   --listen-addr=localhost:26258 \
   --http-addr=localhost:8081 \
-  --join='localhost:26257,localhost:26258,localhost:26259' & \
+  --join='localhost:26257,localhost:26258,localhost:26259' \
+  --background
+
 cockroach start \
   --insecure \
   --store=path=node3 \
   --locality=region=us-east-1  \
   --listen-addr=localhost:26259 \
   --http-addr=localhost:8082 \
-  --join='localhost:26257,localhost:26258,localhost:26259'
+  --join='localhost:26257,localhost:26258,localhost:26259' \
+  --background
 
 cockroach init --host localhost:26257 --insecure
 ```
@@ -208,22 +206,29 @@ cockroach start \
   --locality=region=us-east-2 \
   --listen-addr=localhost:26260 \
   --http-addr=localhost:8083 \
-  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262' & \
+  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262' \
+  --background
+
 cockroach start \
   --insecure \
   --store=path=node5 \
   --locality=region=us-east-2  \
   --listen-addr=localhost:26261 \
   --http-addr=localhost:8084 \
-  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262' & \
+  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262' \
+  --background
+
 cockroach start \
   --insecure \
   --store=path=node6 \
   --locality=region=us-east-2  \
   --listen-addr=localhost:26262 \
   --http-addr=localhost:8085 \
-  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262'
+  --join='localhost:26257,localhost:26258,localhost:26259,localhost:26260,localhost:26261,localhost:26262' \
+  --background
 ```
+
+Watch console (http://localhost:8083)
 
 **Wait for replication**
 
@@ -265,6 +270,19 @@ Decommission original nodes
 cockroach node decommission 1 --host localhost:26260 --insecure
 cockroach node decommission 2 --host localhost:26260 --insecure
 cockroach node decommission 3 --host localhost:26260 --insecure
+```
+
+Watch console (http://localhost:8083)
+
+### Resources
+
+* https://stackoverflow.com/questions/32353055/how-to-start-a-stopped-docker-container-with-a-different-command
+
+To access the /var/lib/docker stuff, run the following:
+
+``` sh
+docker run -it --privileged --pid=host debian nsenter -t 1 -m -u -n -i sh
+ls /var/lib/docker/volumes/pgdata/_data
 ```
 
 ### Teardown

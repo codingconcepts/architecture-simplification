@@ -1,31 +1,6 @@
 # Before
 
-Read
-
-``` mermaid
-sequenceDiagram
-    participant app
-    participant cache
-    participant database
-    
-    app->>cache: Get value
-    cache-->>app: Does not exist
-    app->>database: Get value
-    database-->>app: Value
-    app->>cache: Set value
-```
-
-Write
-
-``` mermaid
-sequenceDiagram
-    participant app
-    participant cache
-    participant database
-    
-    app->>database: Set value
-    app->>cache: Delete value
-```
+**1 terminal window**
 
 ### Create
 
@@ -61,15 +36,22 @@ INSERT INTO stock (product_id, quantity) VALUES
 ### Run
 
 ``` sh
-(cd 004_unecessary_caching_tier/cache_coherence/before && go run main.go -r 100ms -w 250ms)
+# Read/Write ratio of 2:1
+(cd 004_unecessary_caching_tier/cache_coherence/before && go run main.go -r 10ms -w 20ms)
 ```
 
 ### Summary
 
-* Dual writes can fail and if either fails, customers see an inconsistent view of data
-* In a dynamic environment with reads and writes, caches are often empty
+* Writes to either system will eventually fail:
+  * ...and when they do, customers see an inconsistent view of data
+  * ...or - more realistically - over pay, under pay, don't receive medication
+* In a dynamic environment with reads and writes, a cache's value is diminished
+  * With a read/write ratio of 2:1, the cache is empty half the time
+  * With a read/write ratio of 1:1 (50% reads and 50% writes), the cache is more or less empty
 
 # After
+
+**1 terminal window**
 
 ### Create
 
@@ -103,8 +85,16 @@ INSERT INTO stock (product_id, quantity) VALUES
 ### Run
 
 ``` sh
-(cd 004_unecessary_caching_tier/cache_coherence/after && go run main.go)
+# Read/Write ratio of 2:1
+(cd 004_unecessary_caching_tier/cache_coherence/after && go run main.go -r 10ms -w 20ms)
 ```
+
+### After summary
+
+* There's no comparison this time, because
+  * There's nothing to compare to
+  * There's one source of truth
+  * ...and with SERIALIZABLE isolation, that one source of truth will always be correct
 
 ### Todos
 
@@ -114,9 +104,8 @@ INSERT INTO stock (product_id, quantity) VALUES
 
 * Adding a cache ruins your ACID compliance
 * Having a db and a cache introduces the dual write problem
-* This demo showed the happy path; any comms issues to db or cache will also result in cache incoherence
+* Any comms issues to db or cache could result in cache incoherence
 * Having just a db means there's no dual write problem
-* Having a value in the database that's higher than we're expecting, is OK, that just means there's more recent data than we're aware of
 
 ### Teardown
 

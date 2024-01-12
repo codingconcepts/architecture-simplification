@@ -31,6 +31,7 @@ var (
 	writes         uint64
 	cacheCorrect   uint64
 	cacheMiss      uint64
+	cacheHit       uint64
 	cacheIncorrect uint64
 )
 
@@ -92,6 +93,8 @@ func simulateRead(db *pgxpool.Pool, cache *redis.Client) error {
 	cmd := cache.Get(context.Background(), productID)
 	if err := cmd.Err(); err != nil {
 		if err == redis.Nil {
+			atomic.AddUint64(&cacheMiss, 1)
+
 			// No stock in cache, read from DB.
 			dbQuantity, err := readFromDB(db, productID)
 			if err != nil {
@@ -108,6 +111,7 @@ func simulateRead(db *pgxpool.Pool, cache *redis.Client) error {
 		return nil
 	}
 
+	atomic.AddUint64(&cacheHit, 1)
 	return nil
 }
 
@@ -158,12 +162,18 @@ func printLoop(db *pgxpool.Pool, cache *redis.Client) {
 		}
 
 		fmt.Println("\033[H\033[2J")
-		fmt.Printf("reads:           %d\n", atomic.LoadUint64(&reads))
+		fmt.Printf("reads:           %d (hits: %d / misses: %d)\n",
+			atomic.LoadUint64(&reads),
+			atomic.LoadUint64(&cacheHit),
+			atomic.LoadUint64(&cacheMiss),
+		)
 		fmt.Printf("writes:          %d\n", atomic.LoadUint64(&writes))
+		fmt.Println()
+		fmt.Println("Snapshot sample")
+		fmt.Println("---------------")
 		fmt.Println()
 		fmt.Printf("cache correct:   %d\n", atomic.LoadUint64(&cacheCorrect))
 		fmt.Printf("cache incorrect: %d\n", atomic.LoadUint64(&cacheIncorrect))
-		fmt.Printf("cache miss:      %d\n", atomic.LoadUint64(&cacheMiss))
 	}
 }
 
@@ -213,10 +223,7 @@ func fetchAndCheck(db *pgxpool.Pool, cache *redis.Client) error {
 	success := true
 	for dbk, dbv := range dbProducts {
 		cv, ok := cacheProducts[dbk]
-		if !ok {
-			atomic.AddUint64(&cacheMiss, 1)
-			success = false
-		} else if cv != dbv {
+		if ok && cv != dbv {
 			atomic.AddUint64(&cacheIncorrect, 1)
 			success = false
 		}

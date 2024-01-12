@@ -39,7 +39,7 @@ type order struct {
 
 func simulateWriter(pg *pgxpool.Pool, bq *bigquery.Client) error {
 	i := 0
-	for range time.NewTicker(time.Second).C {
+	for range time.NewTicker(time.Millisecond * 10).C {
 		o := order{
 			ID:     uuid.NewString(),
 			UserID: uuid.NewString(),
@@ -48,11 +48,12 @@ func simulateWriter(pg *pgxpool.Pool, bq *bigquery.Client) error {
 		}
 
 		if err := writeCockroach(pg, o); err != nil {
-			return fmt.Errorf("writing to cockroach: %w", err)
+			log.Printf("writing to cockroach: %v", err)
+			continue
 		}
 
 		i++
-		log.Printf("saved %d orders", i)
+		fmt.Printf("saved %d orders\r", i)
 	}
 
 	return fmt.Errorf("finished work unexpectedly")
@@ -60,6 +61,11 @@ func simulateWriter(pg *pgxpool.Pool, bq *bigquery.Client) error {
 
 func writeCockroach(pg *pgxpool.Pool, o order) error {
 	const stmt = `INSERT INTO orders (id, user_id, total, ts) VALUES ($1, $2, $3, $4)`
+
+	// Insert row into CockroachDB but "fail" 0.1% of the time.
+	if rand.Intn(1000) == 42 {
+		return fmt.Errorf("simulated error in cockroachdb")
+	}
 
 	if _, err := pg.Exec(context.Background(), stmt, o.ID, o.UserID, o.Total, o.TS); err != nil {
 		return fmt.Errorf("inserting row into cockroach: %w", err)
@@ -79,16 +85,6 @@ func (o order) Save() (map[string]bigquery.Value, string, error) {
 	return m, o.ID, nil
 }
 
-func writeBigQuery(bq *bigquery.Client, o order) error {
-	inserter := bq.Dataset("example").Table("orders").Inserter()
-
-	if err := inserter.Put(context.Background(), o); err != nil {
-		return fmt.Errorf("inserting row into bigquery: %w", err)
-	}
-
-	return nil
-}
-
 type bigQueryCDCMessage struct {
 	Payload []order `json:"payload"`
 }
@@ -101,6 +97,12 @@ func bigQueryAdapter(bq *bigquery.Client) {
 			return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
 		}
 
+		// Insert row into BigQuery but "fail" 0.1% of the time.
+		if rand.Intn(1000) == 42 {
+			log.Println("simulated error in bigquery")
+			return fiber.NewError(fiber.StatusInternalServerError, "simulated error in bigquery")
+		}
+
 		for _, o := range msg.Payload {
 			if err := writeBigQuery(bq, o); err != nil {
 				return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -111,6 +113,16 @@ func bigQueryAdapter(bq *bigquery.Client) {
 	})
 
 	log.Fatal(router.ListenTLS(":3000", "./cert.pem", "./key.pem"))
+}
+
+func writeBigQuery(bq *bigquery.Client, o order) error {
+	inserter := bq.Dataset("example").Table("orders").Inserter()
+
+	if err := inserter.Put(context.Background(), o); err != nil {
+		return fmt.Errorf("inserting row into bigquery: %w", err)
+	}
+
+	return nil
 }
 
 func mustConnectCockroach(url string) *pgxpool.Pool {

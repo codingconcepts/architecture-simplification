@@ -40,7 +40,7 @@ type order struct {
 
 func simulateWriter(pg *pgxpool.Pool, cs *gocql.Session, bq *bigquery.Client) error {
 	i := 0
-	for range time.NewTicker(time.Second).C {
+	for range time.NewTicker(time.Millisecond * 10).C {
 		o := order{
 			ID:     uuid.NewString(),
 			UserID: uuid.NewString(),
@@ -49,19 +49,22 @@ func simulateWriter(pg *pgxpool.Pool, cs *gocql.Session, bq *bigquery.Client) er
 		}
 
 		if err := writePostgres(pg, o); err != nil {
-			return fmt.Errorf("writing to postgres: %w", err)
+			log.Printf("writing to postgres: %v", err)
+			continue
 		}
 
 		if err := writeCassandra(cs, o); err != nil {
-			return fmt.Errorf("writing to cassandra: %w", err)
+			log.Printf("writing to cassandra: %v", err)
+			continue
 		}
 
 		if err := writeBigQuery(bq, o); err != nil {
-			return fmt.Errorf("writing to bigquery: %w", err)
+			log.Printf("writing to bigquery: %v", err)
+			continue
 		}
 
 		i++
-		log.Printf("saved %d orders", i)
+		fmt.Printf("saved %d orders\r", i)
 	}
 
 	return fmt.Errorf("finished work unexpectedly")
@@ -69,6 +72,11 @@ func simulateWriter(pg *pgxpool.Pool, cs *gocql.Session, bq *bigquery.Client) er
 
 func writePostgres(pg *pgxpool.Pool, o order) error {
 	const stmt = `INSERT INTO orders (id, user_id, total, ts) VALUES ($1, $2, $3, $4)`
+
+	// Insert row into Postgres but "fail" 0.1% of the time.
+	if rand.Intn(1000) == 42 {
+		return fmt.Errorf("simulated error in postgres")
+	}
 
 	if _, err := pg.Exec(context.Background(), stmt, o.ID, o.UserID, o.Total, o.TS); err != nil {
 		return fmt.Errorf("inserting row into postgres: %w", err)
@@ -79,6 +87,11 @@ func writePostgres(pg *pgxpool.Pool, o order) error {
 
 func writeCassandra(cs *gocql.Session, o order) error {
 	const stmt = `INSERT INTO example.orders (id, user_id, total, ts) VALUES (?, ?, ?, ?)`
+
+	// Insert row into Cassandra but "fail" 0.1% of the time.
+	if rand.Intn(1000) == 42 {
+		return fmt.Errorf("simulated error in cassandra")
+	}
 
 	if err := cs.Query(stmt, o.ID, o.UserID, o.Total, o.TS).Exec(); err != nil {
 		return fmt.Errorf("inserting row into cassandra: %w", err)
@@ -100,6 +113,11 @@ func (o order) Save() (map[string]bigquery.Value, string, error) {
 
 func writeBigQuery(bq *bigquery.Client, o order) error {
 	inserter := bq.Dataset("example").Table("orders").Inserter()
+
+	// Insert row into BigQuery but "fail" 0.1% of the time.
+	if rand.Intn(1000) == 42 {
+		return fmt.Errorf("simulated error in bigquery")
+	}
 
 	if err := inserter.Put(context.Background(), o); err != nil {
 		return fmt.Errorf("inserting row into bigquery: %w", err)
@@ -129,7 +147,9 @@ func mustConnectCassandra(url string) *gocql.Session {
 	for i := 1; i <= 10; i++ {
 		cassandra, err := cluster.CreateSession()
 		if err != nil {
-			time.Sleep(time.Millisecond * time.Duration(100*i))
+			nextTry := time.Duration(100 * i)
+			log.Printf("failed to connect to cassandra, trying again in %sms", nextTry)
+			time.Sleep(nextTry)
 			continue
 		}
 

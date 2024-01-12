@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="vs3pFoyHXYA85VEjd1Kx" name="Page-1">
-        <mxGraphModel dx="268" dy="862" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="816" dy="862" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -140,6 +140,12 @@
                 </mxCell>
                 <mxCell id="47" value="User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;sketch=1;hachureGap=4;jiggle=2;curveFitting=1;fontFamily=Architects Daughter;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DArchitects%2BDaughter;fontSize=12;labelBackgroundColor=default;" parent="1" vertex="1">
                     <mxGeometry x="840" y="130" width="30" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="68" value="Happy path direction -&amp;gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;sketch=1;hachureGap=4;jiggle=2;curveFitting=1;fontFamily=Architects Daughter;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DArchitects%2BDaughter;fontSize=14;rotation=90;" vertex="1" parent="1">
+                    <mxGeometry x="980" y="430" width="230" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="69" value="Rollback path direction -&amp;gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;sketch=1;hachureGap=4;jiggle=2;curveFitting=1;fontFamily=Architects Daughter;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DArchitects%2BDaughter;fontSize=14;rotation=-90;" vertex="1" parent="1">
+                    <mxGeometry x="750" y="430" width="230" height="30" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

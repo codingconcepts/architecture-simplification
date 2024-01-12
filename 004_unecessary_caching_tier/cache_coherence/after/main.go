@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,8 +13,6 @@ import (
 )
 
 var (
-	globalMU sync.RWMutex
-
 	products = []string{
 		"93410c29-1609-484d-8662-ae2d0aa93cc4",
 		"47b0472d-708c-4377-aab4-acf8752f0ecb",
@@ -29,6 +27,10 @@ var (
 )
 
 func main() {
+	readInterval := flag.Duration("r", time.Millisecond*100, "interval between reads")
+	writeInterval := flag.Duration("w", time.Millisecond*1000, "interval between writes")
+	flag.Parse()
+
 	db, err := pgxpool.New(context.Background(), "postgres://root@localhost:26257/defaultdb?sslmode=disable")
 	if err != nil {
 		log.Fatalf("error connecting to database: %v", err)
@@ -39,18 +41,16 @@ func main() {
 		log.Fatalf("error pinging db: %v", err)
 	}
 
-	go simulateReads(db, time.Millisecond*10)
-	go simulateWrites(db, time.Millisecond*100)
+	go simulateReads(db, *readInterval)
+	go simulateWrites(db, *writeInterval)
 	printLoop()
 }
 
 func simulateReads(db *pgxpool.Pool, rate time.Duration) error {
 	for range time.NewTicker(rate).C {
-		globalMU.RLock()
 		if err := simulateRead(db); err != nil {
 			log.Printf("error simulating read: %v", err)
 		}
-		globalMU.RUnlock()
 
 		atomic.AddUint64(&reads, 1)
 	}
@@ -76,11 +76,9 @@ func simulateWrites(db *pgxpool.Pool, rate time.Duration) error {
 	for range time.NewTicker(rate).C {
 		stock++
 
-		globalMU.Lock()
 		if err := simulateWrite(db, stock); err != nil {
 			log.Printf("error simulating write: %v", err)
 		}
-		globalMU.Unlock()
 
 		atomic.AddUint64(&writes, 1)
 	}

@@ -52,9 +52,13 @@ Load
 
 ``` sh
 k6 run 004_unecessary_caching_tier/read_performance/load.js \
-  --summary-trend-stats="min,max,p(95)"
+  --summary-trend-stats="p(99.9)"
 
-# min=716µs    avg=3.18ms  max=71.27ms p(95)=5.96ms
+# BEFORE
+  # http_req_duration..............: avg=3.18ms  min=612µs    med=2.82ms max=41.92ms p(90)=4.83ms p(95)=5.74ms
+
+# AFTER
+  # http_req_duration..............: avg=7.62ms  min=1.64ms med=6.71ms max=58.21ms p(90)=11.69ms p(95)=14.61ms
 ```
 
 ## After
@@ -69,7 +73,7 @@ Load
 
 ``` sh
 k6 run 004_unecessary_caching_tier/read_performance/load.js \
-  --summary-trend-stats="min,max,p(95)"
+  --summary-trend-stats="p(99.9)"
 
 # min=1.64ms avg=7.59ms  max=47.47ms p(95)=14.67ms
 ```
