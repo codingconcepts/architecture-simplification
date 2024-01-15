@@ -80,10 +80,15 @@ func handleGetProduct(db *pgxpool.Pool) fiber.Handler {
 }
 
 func simulateWrites(db *pgxpool.Pool, rate time.Duration) error {
+	writesMade := 0
 	for range time.NewTicker(rate).C {
 		if err := simulateWrite(db); err != nil {
 			log.Printf("error simulating write: %v", err)
 		}
+
+		writesMade++
+		fmt.Printf("Writes made: %d\r", writesMade)
+
 	}
 
 	return fmt.Errorf("finished simulateWrites unexectedly")

@@ -42,14 +42,18 @@ CREATE TABLE shipments (
 );
 
 -- Testing
-CREATE OR REPLACE FUNCTION check_order(o_id IN UUID) RETURNS RECORD LANGUAGE SQL AS $$
+CREATE OR REPLACE FUNCTION check_order(o_id IN UUID) RETURNS STRING LANGUAGE SQL AS $$
   SELECT
-    o.status order_status,
-    p.amount payment_amount,
-    p.status payment_status,
-    array_agg(r.product_id) product,
-    array_agg(r.quantity) quantity,
-    sh.status shipment_status
+    jsonb_pretty(
+      json_build_object(
+        'order_status', o.status,
+        'payment_amount', p.amount,
+        'payment_status', p.status,
+        'product', array_agg(r.product_id),
+        'quantity', array_agg(r.quantity),
+        'shipment_status', sh.status
+      )
+    )
   FROM orders o
   LEFT JOIN payments p ON o.id = p.order_id
   LEFT JOIN reservations r ON o.id = r.order_id

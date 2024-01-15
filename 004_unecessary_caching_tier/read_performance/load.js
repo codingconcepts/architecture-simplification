@@ -9,7 +9,7 @@ export const options = {
     contacts: {
       duration: '10s',
       executor: 'constant-arrival-rate',
-      rate: 5000,
+      rate: 2500,
       timeUnit: '1s',
       preAllocatedVUs: 100,
       maxVUs: 500,

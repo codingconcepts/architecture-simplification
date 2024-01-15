@@ -38,7 +38,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("error parsing db config: %v", err)
 	}
-	cfg.MaxConns = 50
 
 	db, err := pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
@@ -115,10 +114,14 @@ func handleGetProduct(db *pgxpool.Pool, cache *redis.Client) fiber.Handler {
 }
 
 func simulateWrites(db *pgxpool.Pool, cache *redis.Client, rate time.Duration) error {
+	writesMade := 0
 	for range time.NewTicker(rate).C {
 		if err := simulateWrite(db, cache); err != nil {
 			log.Printf("error simulating write: %v", err)
 		}
+
+		writesMade++
+		fmt.Printf("Writes made: %d\r", writesMade)
 	}
 
 	return fmt.Errorf("finished simulateWrites unexectedly")

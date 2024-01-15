@@ -25,7 +25,7 @@ INSERT INTO stock (product_id, quantity)
   SELECT
     gen_random_uuid(),
     1000
-  FROM generate_series(1, 1000);
+  FROM generate_series(1, 100);
 ```
 
 Copy ids into a file
@@ -57,7 +57,7 @@ Load
 
 ``` sh
 k6 run 004_unecessary_caching_tier/read_performance/load.js \
-  --summary-trend-stats="p(99.9)"
+  --summary-trend-stats="avg,p(99)"
 ```
 
 > 99.9nth percentile latencies of around X

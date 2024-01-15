@@ -15,7 +15,6 @@ require (
 	github.com/jackc/pgx/v5 v5.5.0
 	github.com/redis/go-redis/v9 v9.3.0
 	github.com/samber/lo v1.39.0
-	github.com/scylladb/scylla-cdc-go v1.1.0
 	github.com/segmentio/kafka-go v0.4.46
 	golang.org/x/sync v0.4.0
 	google.golang.org/api v0.149.0
