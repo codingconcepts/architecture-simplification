@@ -68,7 +68,7 @@ cqlsh -e "CREATE TABLE example.orders (
 go run 002_hyper_specialized_dbs/dual_write/eod/main.go \
   --postgres "postgres://postgres:password@localhost:5432/postgres?sslmode=disable" \
   --cassandra "localhost:9042" \
-  --bigquery "localhost:9050"
+  --bigquery "http://localhost:9050"
 ```
 
 ### Run

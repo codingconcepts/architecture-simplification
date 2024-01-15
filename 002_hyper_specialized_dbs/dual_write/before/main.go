@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -40,7 +41,7 @@ type order struct {
 
 func simulateWriter(pg *pgxpool.Pool, cs *gocql.Session, bq *bigquery.Client) error {
 	i := 0
-	for range time.NewTicker(time.Millisecond * 10).C {
+	for range time.NewTicker(time.Millisecond * 100).C {
 		o := order{
 			ID:     uuid.NewString(),
 			UserID: uuid.NewString(),
@@ -48,21 +49,24 @@ func simulateWriter(pg *pgxpool.Pool, cs *gocql.Session, bq *bigquery.Client) er
 			TS:     time.Now(),
 		}
 
-		if err := writePostgres(pg, o); err != nil {
+		var wg sync.WaitGroup
+
+		if err := writePostgres(pg, o, &wg); err != nil {
 			log.Printf("writing to postgres: %v", err)
 			continue
 		}
 
-		if err := writeCassandra(cs, o); err != nil {
+		if err := writeCassandra(cs, o, &wg); err != nil {
 			log.Printf("writing to cassandra: %v", err)
 			continue
 		}
 
-		if err := writeBigQuery(bq, o); err != nil {
+		if err := writeBigQuery(bq, o, &wg); err != nil {
 			log.Printf("writing to bigquery: %v", err)
 			continue
 		}
 
+		wg.Wait()
 		i++
 		fmt.Printf("saved %d orders\r", i)
 	}
@@ -70,11 +74,17 @@ func simulateWriter(pg *pgxpool.Pool, cs *gocql.Session, bq *bigquery.Client) er
 	return fmt.Errorf("finished work unexpectedly")
 }
 
-func writePostgres(pg *pgxpool.Pool, o order) error {
+func writePostgres(pg *pgxpool.Pool, o order, wg *sync.WaitGroup) error {
+	wg.Add(1)
+	defer wg.Done()
+
+	tt := timeEvent("writePostgres")
+	defer tt()
+
 	const stmt = `INSERT INTO orders (id, user_id, total, ts) VALUES ($1, $2, $3, $4)`
 
-	// Insert row into Postgres but "fail" 0.1% of the time.
-	if rand.Intn(1000) == 42 {
+	// Insert row into Postgres but "fail" 1% of the time.
+	if rand.Intn(100) == 99 {
 		return fmt.Errorf("simulated error in postgres")
 	}
 
@@ -85,11 +95,17 @@ func writePostgres(pg *pgxpool.Pool, o order) error {
 	return nil
 }
 
-func writeCassandra(cs *gocql.Session, o order) error {
+func writeCassandra(cs *gocql.Session, o order, wg *sync.WaitGroup) error {
+	wg.Add(1)
+	defer wg.Done()
+
+	tt := timeEvent("writeCassandra")
+	defer tt()
+
 	const stmt = `INSERT INTO example.orders (id, user_id, total, ts) VALUES (?, ?, ?, ?)`
 
-	// Insert row into Cassandra but "fail" 0.1% of the time.
-	if rand.Intn(1000) == 42 {
+	// Insert row into Cassandra but "fail" 1% of the time.
+	if rand.Intn(100) == 99 {
 		return fmt.Errorf("simulated error in cassandra")
 	}
 
@@ -111,11 +127,17 @@ func (o order) Save() (map[string]bigquery.Value, string, error) {
 	return m, o.ID, nil
 }
 
-func writeBigQuery(bq *bigquery.Client, o order) error {
+func writeBigQuery(bq *bigquery.Client, o order, wg *sync.WaitGroup) error {
+	wg.Add(1)
+	defer wg.Done()
+
+	tt := timeEvent("writeBigQuery")
+	defer tt()
+
 	inserter := bq.Dataset("example").Table("orders").Inserter()
 
-	// Insert row into BigQuery but "fail" 0.1% of the time.
-	if rand.Intn(1000) == 42 {
+	// Insert row into BigQuery but "fail" 10% of the time.
+	if rand.Intn(100) >= 90 {
 		return fmt.Errorf("simulated error in bigquery")
 	}
 
@@ -171,4 +193,11 @@ func mustConnectBigQuery(url string) *bigquery.Client {
 	}
 
 	return client
+}
+
+func timeEvent(eventName string) func() {
+	start := time.Now()
+	return func() {
+		log.Printf("%s took: %s", eventName, time.Since(start))
+	}
 }

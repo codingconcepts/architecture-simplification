@@ -79,7 +79,7 @@ func readPostgres(pg *pgxpool.Pool) (float64, error) {
 	row := pg.QueryRow(context.Background(), stmt)
 
 	if err := row.Scan(&total); err != nil {
-		return 0, fmt.Errorf("reading eod from postgres: %w", err)
+		return 0, nil
 	}
 
 	return total, nil
@@ -124,7 +124,7 @@ func readBigQuery(bq *bigquery.Client) (float64, error) {
 
 	f, ok := row[0].(float64)
 	if !ok {
-		return 0, fmt.Errorf("value not available in bigquery yet")
+		return 0, nil
 	}
 
 	return f, nil
@@ -144,14 +144,13 @@ func mustConnectPostgres(url string) *pgxpool.Pool {
 }
 
 func mustConnectCassandra(url string) *gocql.Session {
-	cluster := gocql.NewCluster(url)
-
 	// The connection to Cassandra fails once in a while, try in a back-off loop
 	// until a connection attempt is successful but otherwise fail.
 	for i := 1; i <= 10; i++ {
-		cassandra, err := cluster.CreateSession()
+		cassandra, err := gocql.NewCluster(url).CreateSession()
 		if err != nil {
-			time.Sleep(time.Millisecond * time.Duration(100*i))
+			log.Printf("error connecting to cassandra: %v", err)
+			time.Sleep(time.Second * time.Duration(i+1))
 			continue
 		}
 
