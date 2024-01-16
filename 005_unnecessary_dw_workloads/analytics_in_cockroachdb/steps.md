@@ -307,7 +307,8 @@ FROM product_combinations
 ORDER BY order_count DESC
 LIMIT 10;
 
--- RFM (Recency, Frequency, Monetary) analysis
+-- RFM (Recency, Frequency, Monetary) analysis.
+-- To: Identify high-worth customers who've not purchased in a while.
 WITH customer_rfm AS (
   SELECT
     customer_id,
@@ -326,7 +327,7 @@ SELECT
 FROM customer_rfm
 WHERE frequency >= 100
 AND monetary >= 10000
-ORDER BY recency DESC, frequency DESC, monetary DESC
+ORDER BY recency DESC, frequency DESC, monetary DESC;
 
 -- Product sales monthly moving average.
 WITH product_sales AS (
@@ -340,14 +341,15 @@ WITH product_sales AS (
   GROUP BY p.id, year
 )
 SELECT
-  product_id,
-  EXTRACT('year', year),
-  sold,
-  TRUNC(AVG(sold) OVER (PARTITION BY product_id ORDER BY year ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) AS moving_average,
-  COALESCE(sold - LAG(sold) OVER (PARTITION BY product_id), 0) AS year_diff
-FROM product_sales
+  p.name,
+  EXTRACT('year', ps.year),
+  ps.sold,
+  TRUNC(AVG(ps.sold) OVER (PARTITION BY ps.product_id ORDER BY ps.year ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) AS moving_average,
+  COALESCE(ps.sold - LAG(ps.sold) OVER (PARTITION BY ps.product_id), 0) AS year_diff
+FROM product_sales ps
+JOIN products p ON ps.product_id = p.id
 WHERE year >= '2020-01-01'
-ORDER BY product_id, year;
+ORDER BY p.name, ps.year;
 
 -- Customer churn prediction.
 WITH
@@ -370,25 +372,32 @@ WITH
     SELECT
       email,
       last_purchase_date,
+      total_order_count,
       orders_last_year,
       orders_last_month,
       CASE
-        WHEN NOW()::DATE - MAX(last_purchase_date)::DATE > 90 AND orders_last_year < 20 THEN 'high risk'
-        WHEN NOW()::DATE - MAX(last_purchase_date)::DATE > 30 AND orders_last_month < 10 THEN 'medium risk'
+        WHEN total_order_count > 100
+          AND NOW()::DATE - MAX(last_purchase_date)::DATE > 90
+          AND orders_last_year < 30
+          THEN 'high risk'
+        WHEN NOW()::DATE - MAX(last_purchase_date)::DATE > 30
+          AND orders_last_month < 10
+          THEN 'medium risk'
         ELSE 'low risk'
       END AS churn_status
     FROM customer_purchases
-    GROUP BY email, last_purchase_date, orders_last_year, orders_last_month
+    GROUP BY email, last_purchase_date, total_order_count, orders_last_year, orders_last_month
   )
 SELECT
   email,
+  total_order_count,
   orders_last_year,
   orders_last_month,
   churn_status
 FROM customer_churn_risk
 WHERE orders_last_year > 0
 AND churn_status != 'low risk'
-ORDER BY churn_status DESC, orders_last_year DESC, orders_last_month DESC;
+ORDER BY churn_status DESC, total_order_count DESC, orders_last_year DESC, orders_last_month DESC;
 ```
 
 ### Scratchpad
