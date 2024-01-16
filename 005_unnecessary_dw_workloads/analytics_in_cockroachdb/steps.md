@@ -10,6 +10,12 @@ docker exec -it node1 cockroach init --insecure
 docker exec -it node1 cockroach sql --insecure
 ```
 
+Enable enterprise
+
+``` sh
+enterprise -url "postgres://root@localhost:26257?sslmode=disable"
+```
+
 Create table and populate
 
 ``` sql
@@ -193,20 +199,12 @@ ORDER BY c.id, o.id, oi.id;
 -- Show user-specific variables.
 SHOW TRANSACTION PRIORITY;
 
--- Orders by month.
-SELECT
-  date_trunc('month', ts)::DATE mth,
-  count(*)
-FROM orders 
-GROUP BY date_trunc('month', ts) 
-ORDER BY mth DESC
-LIMIT 10;
-
 -- Busiest months in history.
 SELECT
   date_trunc('month', ts)::DATE mth,
-  count(*)
-FROM orders 
+  COUNT(*)
+FROM orders
+AS OF SYSTEM TIME follower_read_timestamp()
 GROUP BY date_trunc('month', ts) 
 ORDER BY count DESC
 LIMIT 10;
@@ -214,9 +212,9 @@ LIMIT 10;
 -- Most profitable months in history.
 SELECT
   date_trunc('month', o.ts) AS month,
-  SUM(p.amount) AS monthly_revenue
+  SUM(o.total) AS monthly_revenue
 FROM orders o
-JOIN payments p ON o.id = p.order_id
+AS OF SYSTEM TIME follower_read_timestamp()
 GROUP BY month
 ORDER BY monthly_revenue DESC
 LIMIT 10;
@@ -229,6 +227,7 @@ SELECT
   ROUND(SUM(o.total) / COUNT(o.id)) AS order_average
 FROM customers c
 JOIN orders o ON c.id = o.customer_id
+AS OF SYSTEM TIME follower_read_timestamp()
 GROUP BY c.email
 ORDER BY total_spend DESC
 LIMIT 10;
@@ -239,6 +238,7 @@ SELECT
   ROUND(AVG(o.total)) AS average_spend
 FROM customers c
 JOIN orders o ON c.id = o.customer_id
+AS OF SYSTEM TIME follower_read_timestamp()
 GROUP BY c.email
 ORDER BY average_spend DESC
 LIMIT 10;
@@ -249,6 +249,7 @@ SELECT
   SUM(oi.quantity) AS total_quantity_sold
 FROM products p
 JOIN order_items oi ON p.id = oi.product_id
+AS OF SYSTEM TIME follower_read_timestamp()
 GROUP BY p.name
 ORDER BY total_quantity_sold DESC
 LIMIT 10;
@@ -259,6 +260,7 @@ SELECT
   SUM(oi.quantity) AS total_quantity_sold
 FROM products p
 JOIN order_items oi ON p.id = oi.product_id
+AS OF SYSTEM TIME follower_read_timestamp()
 GROUP BY p.name
 ORDER BY total_quantity_sold
 LIMIT 10;
@@ -269,6 +271,7 @@ SELECT
   MAX(o.ts) AS latest_order_date
 FROM customers c
 JOIN orders o ON c.id = o.customer_id
+AS OF SYSTEM TIME follower_read_timestamp()
 GROUP BY c.email
 ORDER BY latest_order_date
 LIMIT 10;
@@ -280,8 +283,124 @@ SELECT
   o.total
 FROM orders o
 LEFT JOIN payments p ON o.id = p.order_id
+AS OF SYSTEM TIME follower_read_timestamp()
 WHERE p.id IS NULL
 ORDER BY o.total DESC;
+
+-- Product affinity.
+WITH product_combinations AS (
+  SELECT
+    oi1.product_id AS product1,
+    oi2.product_id AS product2,
+    COUNT(DISTINCT oi1.order_id) AS order_count
+  FROM order_items oi1
+  JOIN order_items oi2
+    ON oi1.order_id = oi2.order_id
+    AND oi1.product_id != oi2.product_id
+  GROUP BY oi1.product_id, oi2.product_id
+)
+SELECT
+  product1,
+  product2,
+  order_count
+FROM product_combinations
+ORDER BY order_count DESC
+LIMIT 10;
+
+-- RFM (Recency, Frequency, Monetary) analysis
+WITH customer_rfm AS (
+  SELECT
+    customer_id,
+    now()::DATE - MAX(ts)::DATE AS recency,
+    COUNT(DISTINCT o.id) AS frequency,
+    SUM(o.total) AS monetary
+  FROM orders o
+  WHERE o.ts <= now()
+  GROUP BY customer_id
+)
+SELECT
+  customer_id,
+  recency,
+  frequency,
+  monetary
+FROM customer_rfm
+WHERE frequency >= 100
+AND monetary >= 10000
+ORDER BY recency DESC, frequency DESC, monetary DESC
+
+-- Product sales monthly moving average.
+WITH product_sales AS (
+  SELECT
+    p.id AS product_id,
+    DATE_TRUNC('year', o.ts) AS year,
+    SUM(oi.quantity) AS sold
+  FROM products p
+  LEFT JOIN order_items oi ON p.id = oi.product_id
+  LEFT JOIN orders o ON oi.order_id = o.id
+  GROUP BY p.id, year
+)
+SELECT
+  product_id,
+  EXTRACT('year', year),
+  sold,
+  TRUNC(AVG(sold) OVER (PARTITION BY product_id ORDER BY year ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) AS moving_average,
+  COALESCE(sold - LAG(sold) OVER (PARTITION BY product_id), 0) AS year_diff
+FROM product_sales
+WHERE year >= '2020-01-01'
+ORDER BY product_id, year;
+
+-- Customer churn prediction.
+WITH
+  customer_purchases AS (
+    SELECT
+      c.id AS customer_id,
+      c.email,
+      MAX(o.ts)::DATE AS last_purchase_date,
+      COUNT(DISTINCT o.id) AS total_order_count,
+      COUNT(DISTINCT CASE WHEN o.ts >= CURRENT_DATE - INTERVAL '30 days' THEN o.id END) AS orders_last_month,
+      COUNT(DISTINCT CASE WHEN o.ts >= CURRENT_DATE - INTERVAL '1 year' THEN o.id END) AS orders_last_year
+    FROM
+      customers c
+    LEFT JOIN
+      orders o ON c.id = o.customer_id
+    GROUP BY
+      c.id, c.email
+  ),
+  customer_churn_risk AS (
+    SELECT
+      email,
+      last_purchase_date,
+      orders_last_year,
+      orders_last_month,
+      CASE
+        WHEN NOW()::DATE - MAX(last_purchase_date)::DATE > 90 AND orders_last_year < 20 THEN 'high risk'
+        WHEN NOW()::DATE - MAX(last_purchase_date)::DATE > 30 AND orders_last_month < 10 THEN 'medium risk'
+        ELSE 'low risk'
+      END AS churn_status
+    FROM customer_purchases
+    GROUP BY email, last_purchase_date, orders_last_year, orders_last_month
+  )
+SELECT
+  email,
+  orders_last_year,
+  orders_last_month,
+  churn_status
+FROM customer_churn_risk
+WHERE orders_last_year > 0
+AND churn_status != 'low risk'
+ORDER BY churn_status DESC, orders_last_year DESC, orders_last_month DESC;
+```
+
+### Scratchpad
+
+``` sql
+-- ef8b898b-070b-4710-b57c-caaddcd09d3a + 6e01fd2d-e761-4414-87a7-35d0c6e63ff7 = 305
+SELECT
+  oi.order_id,
+  COUNT(*)
+FROM order_items oi
+WHERE oi.product_id IN ('ef8b898b-070b-4710-b57c-caaddcd09d3a', '6e01fd2d-e761-4414-87a7-35d0c6e63ff7')
+GROUP BY oi.order_id;
 ```
 
 ### Summary
