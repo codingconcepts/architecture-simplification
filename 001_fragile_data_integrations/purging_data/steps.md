@@ -36,8 +36,8 @@ Data purger service
 Check number of expired orders
 
 ``` sh
-SELECT count(*) FROM orders
-WHERE ts < now() + INTERVAL '5 year';
+see -n 1 cockroach sql --insecure -e "SELECT COUNT(*) FROM orders
+WHERE ts < now() + INTERVAL '5 year'";
 ```
 
 # After
@@ -51,12 +51,7 @@ ALTER TABLE orders SET (
 );
 ```
 
-Check number of expired orders
-
-``` sh
-SELECT count(*) FROM orders
-WHERE ts < now() + INTERVAL '5 year';
-```
+Stop data purger
 
 ### Teardown
 

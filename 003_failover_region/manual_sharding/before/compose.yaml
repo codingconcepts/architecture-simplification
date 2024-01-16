@@ -14,33 +14,33 @@ services:
     networks:
       - app-network
   
-  jp_db:
-    image: postgres:16
-    hostname: jp_db
-    container_name: jp_db
-    platform: linux/amd64
-    ports:
-      - 5433:5432
-    volumes:
-      - jp_db:/var/lib/postgresql/data
-    environment:
-      POSTGRES_PASSWORD: password
-    networks:
-      - app-network
+  # jp_db:
+  #   image: postgres:16
+  #   hostname: jp_db
+  #   container_name: jp_db
+  #   platform: linux/amd64
+  #   ports:
+  #     - 5433:5432
+  #   volumes:
+  #     - jp_db:/var/lib/postgresql/data
+  #   environment:
+  #     POSTGRES_PASSWORD: password
+  #   networks:
+  #     - app-network
 
-  us_db:
-    image: postgres:16
-    hostname: us_db
-    container_name: us_db
-    platform: linux/amd64
-    ports:
-      - 5434:5432
-    volumes:
-      - us_db:/var/lib/postgresql/data
-    environment:
-      POSTGRES_PASSWORD: password
-    networks:
-      - app-network
+  # us_db:
+  #   image: postgres:16
+  #   hostname: us_db
+  #   container_name: us_db
+  #   platform: linux/amd64
+  #   ports:
+  #     - 5434:5432
+  #   volumes:
+  #     - us_db:/var/lib/postgresql/data
+  #   environment:
+  #     POSTGRES_PASSWORD: password
+  #   networks:
+  #     - app-network
 
 networks:
   app-network:

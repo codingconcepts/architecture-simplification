@@ -5,15 +5,18 @@
 * Running a business in the EU
 * Our only customers are EU customers, so we not considering any form of sharding
 
-### Create
+### Infrastructure
 
-Infrastructure
+Start single UK node (simulating business start-up)
 
-```sh
-(
-  cd 003_failover_region/manual_sharding/before && \
-  docker compose up --build --force-recreate -d
-)
+``` sh
+docker run -d \
+  --name eu_db \
+  --platform linux/amd64 \
+  -p 5432:5432 \
+  -v eu_db:/var/lib/postgresql/data \
+  -e POSTGRES_PASSWORD=password \
+    postgres:16
 ```
 
 Create tables
@@ -23,82 +26,49 @@ Create tables
 ```sh
 psql "postgres://postgres:password@localhost:5432/?sslmode=disable" \
   -c 'CREATE TABLE customer (
-        id UUID NOT NULL DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         email TEXT NOT NULL
+      );'
+
+psql "postgres://postgres:password@localhost:5432/?sslmode=disable" \
+  -c 'CREATE TABLE purchase (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        customer_id UUID NOT NULL REFERENCES customer(id),
+        amount DECIMAL NOT NULL
       );'
 ```
 
 ### Run
 
-Server
+Simulate customers
 
 ```sh
 go run 003_failover_region/manual_sharding/before/main.go \
   --url "postgres://postgres:password@localhost:5432/?sslmode=disable"
 ```
 
-Simulate customers
+### Expand UK
+
+Bring up additional UK node
 
 ``` sh
-k6 run 003_failover_region/manual_sharding/before/load.js \
-  --vus 10 \
-  --duration 1h \
-  --summary-trend-stats="min,max,p(95)"
+docker run -d \
+  --name eu_db_2 \
+  --platform linux/amd64 \
+  -p 5433:5432 \
+  -v eu_db:/var/lib/postgresql/data \
+  -e POSTGRES_PASSWORD=password \
+    postgres:16
 ```
+
+### Expand to US and JP
 
 > At this point we gain US customers. Explain their experience.
 > At this point we gain JP customers. Explain their experience.
 > We decide to shard.
 > Bring up two additional nodes (one in US, one in JP) - already done.
 
-Install citus
 
-``` sh
-(
-  cd 003_failover_region/manual_sharding/before && \
-  docker exec -i eu_db bash < install_citus.sh &\
-  docker exec -i jp_db bash < install_citus.sh &\
-  docker exec -i us_db bash < install_citus.sh
-)
-
-docker restart eu_db us_db jp_db
-```
-
-Install the citus extension
-
-``` sh
-psql "postgres://postgres:password@localhost:5432/?sslmode=disable" \
-  -c "CREATE EXTENSION IF NOT EXISTS citus;"
-
-psql "postgres://postgres:password@localhost:5433/?sslmode=disable" \
-  -c "CREATE EXTENSION IF NOT EXISTS citus;"
-
-psql "postgres://postgres:password@localhost:5434/?sslmode=disable" \
-  -c "CREATE EXTENSION IF NOT EXISTS citus;"
-```
-
-Prepare the coordinator
-
-``` sh
-psql "postgres://postgres:password@localhost:5432/?sslmode=disable" \
-  -c "SELECT citus_set_coordinator_host('eu_db', 5432);" \
-  -c "SELECT * FROM citus_add_node('jp_db', 5432);" \
-  -c "SELECT * FROM citus_add_node('us_db', 5432);"
-```
-
-Create tables and partition
-
-``` sh
-psql "postgres://postgres:password@localhost:5432/?sslmode=disable" \
-  < 003_failover_region/manual_sharding/before/partition.sql
-```
-
-Populate the partitioned customer table
-
-``` sh
-psql "postgres://postgres:password@localhost:5432/?sslmode=disable" \
-  < 003_failover_region/manual_sharding/before/populate.sql
-```
 
 Test partitioning
 

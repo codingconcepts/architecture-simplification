@@ -1,5 +1,7 @@
 ### Create
 
+**2 terminal windows**
+
 Infra
 
 ``` sh
@@ -13,7 +15,6 @@ Create table and populate
 ``` sql
 CREATE TABLE customers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  full_name STRING NOT NULL,
   email STRING UNIQUE NOT NULL
 );
 
@@ -62,7 +63,7 @@ Import data
 
 ``` sql
 IMPORT INTO customers (
-	id, full_name, email
+	id, email
 )
 CSV DATA (
     'http://host.docker.internal:9090/customers.csv'
@@ -102,6 +103,49 @@ CSV DATA (
 WITH skip='1', nullif = '', allow_quoted_null;
 ```
 
+Simulate transactional workload
+
+``` sh
+go run 005_unnecessary_dw_workloads/analytics_in_cockroachdb/main.go
+
+k6 run 005_unnecessary_dw_workloads/analytics_in_cockroachdb/load.js
+
+```
+
+**DEBUG** Test transactional workload
+
+``` sh
+# Insert customer
+curl "http://localhost:3000/customers" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "68b790f4-9527-4a51-b0fd-b530613f34a9",
+    "email": "abc@gmail.com"
+  }'
+
+# Get products
+curl "http://localhost:3000/products" | jq
+
+# Insert order
+curl "http://localhost:3000/orders" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "318c7a41-aacb-4166-9179-706d4e60de83",
+    "customer_id": "68b790f4-9527-4a51-b0fd-b530613f34a9",
+    "items": [
+      {
+        "id": "c4c12e8f-6dc3-48d3-86ea-93cb01ee63c0",
+        "quantity": 48
+      },
+      {
+        "id": "9dcfbcd2-1848-4b50-b3f5-73b09d70d5be",
+        "quantity": 1
+      }
+    ],
+    "total": 100
+  }'
+```
+
 ### Analytics
 
 Setup
@@ -132,6 +176,20 @@ cockroach sql --url "postgres://analytics@localhost:26257/defaultdb?sslmode=disa
 Queries
 
 ``` sql
+-- Fetch a customer and their orders.
+SELECT
+  c.email,
+  o.id,
+  o.total,
+  oi.quantity,
+  p.price
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+LEFT JOIN order_items oi ON o.id = oi.order_id
+LEFT JOIN products p ON oi.product_id = p.id
+WHERE c.id = '0a3546b5-6ad3-49b2-b960-dc6958faca30'
+ORDER BY c.id, o.id, oi.id;
+
 -- Show user-specific variables.
 SHOW TRANSACTION PRIORITY;
 
@@ -165,23 +223,23 @@ LIMIT 10;
 
 -- Biggest spenders.
 SELECT
-  c.full_name,
+  c.email,
   SUM(o.total) AS total_spend,
   COUNT(o.id) AS order_count,
   ROUND(SUM(o.total) / COUNT(o.id)) AS order_average
 FROM customers c
 JOIN orders o ON c.id = o.customer_id
-GROUP BY c.full_name
+GROUP BY c.email
 ORDER BY total_spend DESC
 LIMIT 10;
 
 -- Biggest average spenders.
 SELECT
-  c.full_name,
+  c.email,
   ROUND(AVG(o.total)) AS average_spend
 FROM customers c
 JOIN orders o ON c.id = o.customer_id
-GROUP BY c.full_name
+GROUP BY c.email
 ORDER BY average_spend DESC
 LIMIT 10;
 
@@ -207,11 +265,11 @@ LIMIT 10;
 
 -- Idle customers.
 SELECT
-  c.full_name,
+  c.email,
   MAX(o.ts) AS latest_order_date
 FROM customers c
 JOIN orders o ON c.id = o.customer_id
-GROUP BY c.full_name
+GROUP BY c.email
 ORDER BY latest_order_date
 LIMIT 10;
 

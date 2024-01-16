@@ -7,10 +7,6 @@ tables:
         type: gen
         processor:
           value: ${uuid}
-      - name: full_name
-        type: gen
-        processor:
-          value: ${name}
       - name: email
         type: gen
         processor:
