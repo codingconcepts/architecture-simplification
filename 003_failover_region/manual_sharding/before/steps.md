@@ -135,8 +135,10 @@ INSERT INTO customer_partitioned
 SELECT * FROM customer;
 
 -- Drop original table and replace with partitioned.
+BEGIN;
 DROP TABLE customer;
 ALTER TABLE customer_partitioned RENAME TO customer;
+COMMIT;
 
 -- Test.
 INSERT INTO customer (id, email)
@@ -262,11 +264,13 @@ CREATE FOREIGN TABLE customer_2_new
 INSERT INTO customer_partitioned
   SELECT * FROM customer;
 
+BEGIN;
 DROP TABLE customer;
 ALTER TABLE customer_partitioned RENAME TO customer;
 ALTER TABLE customer_0_new RENAME TO customer_0;
 ALTER TABLE customer_1_new RENAME TO customer_1;
 ALTER TABLE customer_2_new RENAME TO customer_2;
+COMMIT;
 
 -- Test.
 INSERT INTO customer (id, email)
@@ -300,20 +304,28 @@ psql "postgres://postgres:password@localhost:5434/?sslmode=disable" \
   -c "SELECT COUNT(*) FROM customer";
 ```
 
-Drop original customer table on eu_db_2 and rename customer_new.
+Connect to the eu_db_2 database.
 
 ``` sh
-psql "postgres://postgres:password@localhost:5433/?sslmode=disable" \
-  -c "DROP TABLE customer";
+psql "postgres://postgres:password@localhost:5433/?sslmode=disable"
+```
 
-psql "postgres://postgres:password@localhost:5433/?sslmode=disable" \
-  -c "ALTER TABLE customer_new RENAME TO customer;";
+Rename customer_new to customer.
 
-psql "postgres://postgres:password@localhost:5433/?sslmode=disable" \
-  -c "ALTER FOREIGN TABLE customer_1
-        OPTIONS (
-          SET table_name 'customer'
-        );"
+``` sql
+BEGIN;
+DROP TABLE customer;
+ALTER TABLE customer_new RENAME TO customer;
+COMMIT;
+```
+
+Back on eu_db_1, alter the foreign table back to customer.
+
+``` sql
+ALTER FOREIGN TABLE customer_1
+  OPTIONS (
+    SET table_name 'customer'
+  );
 ```
 
 ### Teardown
