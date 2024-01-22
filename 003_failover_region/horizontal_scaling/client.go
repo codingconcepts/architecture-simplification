@@ -34,6 +34,16 @@ func main() {
 
 func work(db *pgxpool.Pool) {
 	for range time.NewTicker(time.Second * 1).C {
+		const stmt = `SELECT COUNT(*) FROM customer`
 
+		start := time.Now()
+		row := db.QueryRow(context.Background(), stmt)
+
+		var count int
+		if err := row.Scan(&count); err != nil {
+			log.Printf("error getting row count: %v", err)
+		}
+
+		log.Printf("customers: %d (took %s)", count, time.Since(start))
 	}
 }

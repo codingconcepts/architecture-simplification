@@ -1,4 +1,8 @@
-### Pre-scale
+### Before
+
+**3 terminal windows**
+
+> Mention that this is a single node before we've realised we need to scale.
 
 Create first node
 
@@ -28,6 +32,13 @@ INSERT INTO customer (id, email)
     gen_random_uuid(),
     CONCAT(gen_random_uuid(), '@gmail.com')
   FROM generate_series(1, 1000);
+```
+
+Start client
+
+``` sh
+go run 003_failover_region/horizontal_scaling/client.go \
+  --url "postgres://postgres:password@localhost:5432/?sslmode=disable"
 ```
 
 ### Year 1 scale-up (to 2 nodes)
@@ -108,6 +119,8 @@ CREATE FOREIGN TABLE customer_1
   );
 ```
 
+> Draw attention to latencies (they'll increase from now on).
+
 Test
 ``` sql
 -- Insert data into the partitioned table.
@@ -115,6 +128,7 @@ INSERT INTO customer_partitioned
   SELECT * FROM customer;
 
 -- Drop original table and replace with partitioned.
+-- MENTION PAUSE.
 BEGIN;
 DROP TABLE customer;
 ALTER TABLE customer_partitioned RENAME TO customer;
@@ -242,6 +256,8 @@ CREATE FOREIGN TABLE customer_2_new
 INSERT INTO customer_partitioned
   SELECT * FROM customer;
 
+-- Drop original table and replace with partitioned.
+-- MENTION PAUSE.
 BEGIN;
 DROP TABLE customer;
 ALTER TABLE customer_partitioned RENAME TO customer;
@@ -251,6 +267,7 @@ ALTER TABLE customer_2_new RENAME TO customer_2;
 COMMIT;
 
 -- Test.
+-- MENTION: Increased latency again.
 INSERT INTO customer (id, email)
   SELECT
     gen_random_uuid(),
@@ -273,6 +290,9 @@ ORDER BY table_name;
 ```
 
 Rename customer_new to customer on eu_db_2.
+
+> Mention how this will knock out queries until compleleted.
+> (And it can't be done as a distributed transaction).
 
 ``` sh
 psql "postgres://postgres:password@localhost:5433/?sslmode=disable" \
@@ -508,12 +528,14 @@ INSERT INTO customer_partitioned
   SELECT * FROM customer;
 
 -- Drop original table and replace with partitioned.
+-- MENTION downtime and further increased latency.
 BEGIN;
 DROP TABLE customer;
 ALTER TABLE customer_partitioned RENAME TO customer;
 COMMIT;
 
 -- Test.
+-- MENTION slow insert.
 INSERT INTO customer (id, email, region)
   SELECT
     gen_random_uuid(),
@@ -571,6 +593,46 @@ psql "postgres://postgres:password@localhost:5432/?sslmode=disable" \
       OPTIONS (
         SET table_name 'customer'
       );"
+```
+
+### Scratchpad
+
+``` sh
+# Insert a row directly into a US node.
+psql "postgres://postgres:password@localhost:5435/?sslmode=disable" \
+  -c "INSERT INTO customer (email, region) VALUES ('us_1@gmail.com', 'us');"
+
+psql "postgres://postgres:password@localhost:5435/?sslmode=disable" \
+  -c "INSERT INTO customer (email, region) VALUES ('us_2@gmail.com', 'us');"
+
+psql "postgres://postgres:password@localhost:5435/?sslmode=disable" \
+  -c "INSERT INTO customer (email, region) VALUES ('us_3@gmail.com', 'us');"
+
+# Insert an existing id.
+psql "postgres://postgres:password@localhost:5435/?sslmode=disable" \
+  -c "INSERT INTO customer (id, email, region) VALUES ('26c12e0a-ee43-467f-b678-518876338407', 'us_3@gmail.com', 'us');"
+```
+
+### Summary
+
+* All of the complexity in this demo has been incurred for just one table.
+  * The complexity will only grow once I need more tables.
+
+* If my user base shrinks, my cluster is now much harder to shrink.
+
+* If my user base grows, I need to repartition again.
+
+* All main queries will still need to go through 1 node
+  * Makes me realise why all of the CSP databases have a master/primary write node
+
+* This satisfies the need to keep data pinned to geographies but doesn't allow us to achieve low-latency reads for all users ("GLOBAL TABLES" in CockroachDB). For that, we'd need replication, which will add further complexity.
+
+* No data integrity, I can insert conflicting ids into each of the servers directly.
+
+``` sh
+# Insert an existing id.
+psql "postgres://postgres:password@localhost:5435/?sslmode=disable" \
+  -c "INSERT INTO customer (id, email, region) VALUES ('26c12e0a-ee43-467f-b678-518876338407', 'us_3@gmail.com', 'us');"
 ```
 
 ### Teardown
