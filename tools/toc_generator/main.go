@@ -63,11 +63,11 @@ func printScenarios(scenarios []scenario) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-
 	keys = lo.Uniq(keys)
 
+	fmt.Printf("### Table of Contents\n")
 	for _, key := range keys {
-		fmt.Printf("\n### %s\n", key)
+		fmt.Printf("\n##### %s\n", key)
 
 		scenarios := groupedScenarios[key]
 		for _, s := range scenarios {
