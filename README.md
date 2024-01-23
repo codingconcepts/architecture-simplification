@@ -17,6 +17,7 @@ Code samples to accompany the architecture simplification initiative
 ### 003_failover_region
 * [database_migration](003_failover_region/database_migration/steps.md)
 * [database_upgrades](003_failover_region/database_upgrades/steps.md)
+* [horizontal_scaling](003_failover_region/horizontal_scaling/steps.md)
 * [predictable_failover_latency](003_failover_region/predictable_failover_latency/steps.md)
 
 ### 004_unecessary_caching_tier
