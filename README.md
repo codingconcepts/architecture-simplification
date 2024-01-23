@@ -49,6 +49,7 @@ The following dependencies will allow you to run all of the examples
 * [k6](https://k6.io) - To run load tests
 * [Docker](https://rancherdesktop.io) - The Docker runtime (I'm using Rancher Desktop)
 * [Kubernetes](https://k3d.io/v5.6.0) - Local Kubernetes clusters (I'm using k3d)
+* [Terraform](https://developer.hashicorp.com/terraform/install) - The IaC tool for creating cloud infrastructure
 * [kubectl](https://kubernetes.io/docs/tasks/tools) - A CLI for interating with Kubernetes
 * [kafkactl](https://github.com/deviceinsight/kafkactl) - A CLI for interacting with Kafka
 
