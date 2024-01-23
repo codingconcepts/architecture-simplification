@@ -39,7 +39,7 @@ The following dependencies will allow you to run all of the examples
 
 ##### Major dependencies
 
-* [CockroachDB](https://www.cockroachlabs.com/docs/stable/install-cockroachdb.html) - the runnable binary from which you'll be able to call `start` or `demo` to launch different kinds of clusters
+* [CockroachDB](https://www.cockroachlabs.com/docs/stable/install-cockroachdb.html) - the runnable binary to launch different kinds of clusters
 * [Postgres](https://www.postgresql.org/download) - For its `psql` CLI
 * [cqlsh](https://docs.datastax.com/en/dse/6.8/docs/installing/cqlsh.html) - The Cassandra CQL shell
 * [gcloud](https://cloud.google.com/sdk/gcloud) - The Google Cloud CLI
