@@ -57,5 +57,6 @@ The following dependencies will allow you to run all of the examples
 
 * [make](https://www.gnu.org/software/make) - the GNU Make tool
 * [dg](https://github.com/codingconcepts/dg) - a simple data generator
+* [dp](https://github.com/codingconcepts/dp) - a simple dynamic proxy
 * [dw](https://github.com/codingconcepts/dw) - a simple app that waits for a database to become available
 * [see](https://github.com/codingconcepts/see) - a simple cross-platform version of the `watch` command
