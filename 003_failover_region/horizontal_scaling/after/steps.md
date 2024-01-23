@@ -7,7 +7,7 @@ Create UK cluster
 ``` sh
 cockroach start \
   --insecure \
-  --store=path=node1 \
+  --store=path=node1,size=1GB \
   --locality=region=eu-west-2 \
   --listen-addr=localhost:26257 \
   --http-addr=localhost:8080 \
@@ -16,7 +16,7 @@ cockroach start \
 
 cockroach start \
   --insecure \
-  --store=path=node2 \
+  --store=path=node2,size=1GB \
   --locality=region=eu-west-2  \
   --listen-addr=localhost:26258 \
   --http-addr=localhost:8081 \
@@ -25,7 +25,7 @@ cockroach start \
 
 cockroach start \
   --insecure \
-  --store=path=node3 \
+  --store=path=node3,size=1GB \
   --locality=region=eu-west-2  \
   --listen-addr=localhost:26259 \
   --http-addr=localhost:8082 \
@@ -63,7 +63,7 @@ go run 003_failover_region/horizontal_scaling/client.go \
 ``` sh
 cockroach start \
   --insecure \
-  --store=path=node4 \
+  --store=path=node4,size=1GB \
   --locality=region=us-east-1 \
   --listen-addr=localhost:26260 \
   --http-addr=localhost:8083 \
@@ -72,7 +72,7 @@ cockroach start \
 
 cockroach start \
   --insecure \
-  --store=path=node5 \
+  --store=path=node5,size=1GB \
   --locality=region=us-east-1  \
   --listen-addr=localhost:26261 \
   --http-addr=localhost:8084 \
@@ -81,7 +81,7 @@ cockroach start \
 
 cockroach start \
   --insecure \
-  --store=path=node6 \
+  --store=path=node6,size=1GB \
   --locality=region=us-east-1  \
   --listen-addr=localhost:26262 \
   --http-addr=localhost:8085 \
@@ -100,14 +100,14 @@ All region column
 > Notice how the customer queries aren't affected.
 
 ``` sql
-ALTER TABLE customer
-ADD REGION CRDB_INTERNAL_REGION NOT NULL DEFAULT 'eu-west-2';
-
 ALTER DATABASE defaultdb
 SET PRIMARY REGION 'eu-west-2';
 
 ALTER DATABASE defaultdb
 ADD REGION 'us-east-1';
+
+ALTER TABLE customer
+ADD REGION crdb_internal_region NOT NULL DEFAULT 'eu-west-2';
 
 ALTER TABLE customer
 SET LOCALITY REGIONAL BY ROW;
