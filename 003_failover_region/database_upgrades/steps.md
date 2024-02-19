@@ -1,5 +1,7 @@
 # Before
 
+**3 terminal windows**
+
 ### Introduction
 
 * In order to do this without downtime, you'd have to run some kind of blue/green, failover setup.
@@ -84,15 +86,19 @@ Deploy CockroachDB
 
 ``` sh
 kubectl apply -f 003_failover_region/database_upgrades/after/manifests/cockroachdb/v23.1.11.yaml
-
-kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach init --insecure
-kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach sql --insecure
 ```
 
 Wait for CockroachDB
 
 ``` sh
 see kubectl get pods -A
+```
+
+Initialise and connect
+
+``` sh
+kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach init --insecure
+kubectl exec -it -n crdb cockroachdb-0 -- /cockroach/cockroach sql --insecure
 ```
 
 Create table
@@ -118,7 +124,7 @@ docker push localhost:9090/app:latest
 kubectl rollout restart deployment app
 ```
 
-Monitor application
+Restart kubetail
 
 ``` sh
 kubetail app

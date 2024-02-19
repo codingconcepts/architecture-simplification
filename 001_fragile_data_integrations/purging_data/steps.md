@@ -42,6 +42,8 @@ WHERE ts < now() + INTERVAL '5 year'";
 
 # After
 
+**Without stopping anything**
+
 Add TTL
 
 ``` sql
@@ -51,7 +53,7 @@ ALTER TABLE orders SET (
 );
 ```
 
-Stop data purger
+Stop the data purger
 
 ### Teardown
 

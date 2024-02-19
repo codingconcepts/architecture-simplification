@@ -16,7 +16,8 @@
 Connect to the primary node
 
 ``` sh
-psql postgres://user:password@localhost:5432/postgres 
+dw postgres://user:password@localhost:5432/postgres
+psql postgres://user:password@localhost:5432/postgres
 ```
 
 Create table and insert data
@@ -39,7 +40,8 @@ INSERT INTO product ("name", "price") VALUES
 Connect to the secondary node
 
 ``` sh
-psql postgres://user:password@localhost:5433/postgres 
+dw postgres://user:password@localhost:5433/postgres
+psql postgres://user:password@localhost:5433/postgres
 ```
 
 Query table
@@ -61,7 +63,7 @@ Run application
 
 ``` sh
 CONNECTION_STRING=postgres://user:password@localhost:5430/postgres?sslmode=disable \
-  go run 003_failover_region/predictable_failover_latency/main.go
+  go run 003_failover_region/predictable_failover_latency/before/main.go
 ```
 
 Take down primary
@@ -111,13 +113,8 @@ Initialise the cluster
 
 ``` sh
 docker exec -it node4 cockroach init --insecure
-docker exec -it node4 cockroach sql --insecure 
-```
-
-Convert to enterprise
-
-``` sh
 enterprise --url "postgres://root@localhost:26002/?sslmode=disable"
+docker exec -it node4 cockroach sql --insecure 
 ```
 
 Create table and insert data
@@ -155,7 +152,7 @@ Run application
 
 ``` sh
 CONNECTION_STRING=postgres://root@localhost:26257/store?sslmode=disable \
-  go run 003_failover_region/predictable_failover_latency/main.go
+  go run 003_failover_region/predictable_failover_latency/after/main.go
 ```
 
 Show the replica numbers

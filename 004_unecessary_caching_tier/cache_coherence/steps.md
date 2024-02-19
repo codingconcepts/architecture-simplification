@@ -13,6 +13,7 @@ Infrastructure
 Connect to Postgres
 
 ``` sh
+dw "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 psql "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 ```
 

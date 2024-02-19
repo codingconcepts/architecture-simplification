@@ -1,6 +1,6 @@
 # Before
 
-**2 terminal windows (vertical)**
+**3 terminal windows (vertical)**
 
 ### Introduction
 

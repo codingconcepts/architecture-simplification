@@ -28,7 +28,9 @@ func work(db *pgxpool.Pool) {
 	for range time.NewTicker(time.Second).C {
 		id := uuid.NewString()
 
-		err := crdbpgx.ExecuteTx(context.Background(), db, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		ctx, _ := context.WithTimeout(context.Background(), time.Second*3)
+
+		err := crdbpgx.ExecuteTx(ctx, db, pgx.TxOptions{}, func(tx pgx.Tx) error {
 			// Insert purchase.
 			stmt := `INSERT INTO purchase (id, basket_id, member_id, amount) VALUES ($1, $2, $3, $4)`
 			if _, err := db.Exec(context.Background(), stmt, id, uuid.NewString(), uuid.NewString(), rand.Float64()*100); err != nil {
@@ -63,6 +65,4 @@ func work(db *pgxpool.Pool) {
 			log.Println(err)
 		}
 	}
-
-	log.Fatal("application unexpectedly exited")
 }
