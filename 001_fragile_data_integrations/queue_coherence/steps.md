@@ -37,7 +37,7 @@ INSERT INTO stock (product_id, quantity) VALUES
 Without errors
 
 ``` sh
-(cd 001_fragile_data_integrations/queue_coherence/before && go run main.go -r 100ms -w 250ms -f)
+(cd 001_fragile_data_integrations/queue_coherence/before && go run main.go -r 100ms -w 250ms)
 ```
 
 With errors
